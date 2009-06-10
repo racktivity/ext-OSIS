@@ -1,0 +1,13 @@
+known user in cloudcenter.
+This user has certain rights on 1 or more boxofficeEnvironments.
+
+A User can be 
+* def:zenith_operator
+* def:bo_operator
+* def:aserver_operator
+
+This user has
+* unique GUID
+* unique login  (which is the generic id used, is also called def:user_id )
+* passwd
+* optional: description

@@ -1,0 +1,2 @@
+is pymonkey pymonkey:def:applicationserver installed on cloudcenter.
+Can be used to host central services e.g. registration service

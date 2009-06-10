@@ -1,0 +1,3 @@
+main gui of management of 1 or more def:bo_env 's.
+is ajax enabled web based gui.
+

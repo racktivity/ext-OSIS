@@ -1,0 +1,10 @@
+
+on 2 or 3 locations in the world there a central management is being deployed. This system has an overview of all boxoffice installations globally.
+Cloudcenter has following components
+
+* bo:comp:cloudcenter_db
+* bo:comp:cloudcenter_watchdogserver
+* bo:comp:cloudcenter_applicationserver
+* bo:comp:cloudcenter_rulesengine
+* bo:comp:cloudcenter_webserver
+

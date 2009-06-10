@@ -1,0 +1,258 @@
+h2. {{Email Cloud API DOC for cloud object}} subspace
+{multi-excerpt:name=subspace.create}
+h3. {{subspace.create(subSpace, processingCredits, storageCredits, networkingCredits, userFirstName, userLastName, userLogin, userPassword, email)}}
+Create a new  sub-space
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+* processingCredits (integer): Amount of processing credits, assigned to this space
+* storageCredits (integer): Amount of storage credits, assigned to this space
+* networkingCredits (integer): Amount of networking credits, assigned to this space
+* userFirstName (string): First name of the user
+* userLastName (string): Last name of the user
+* userLogin (string): User login to access the new space
+* userPassword (string): User password to access the new space
+* email (string): E-mail address to reach the customer
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = create
+space = John Doe
+subSpace = <string>
+processingCredits = <integer>
+storageCredits = <integer>
+networkingCredits = <integer>
+userFirstName = <string>
+userLastName = <string>
+userLogin = <string>
+userPassword = <string>
+email = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.delete}
+h3. {{subspace.delete(subSpace)}}
+Delete a sub-space
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = delete
+space = John Doe
+subSpace = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.listSubSpaces}
+h3. {{subspace.listSubSpaces()}}
+List all sub-spaces
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = listSubSpaces
+space = John Doe
+{noformat}
+
+h4. {{Return}}
+tuple of sub-space names
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.addUser}
+h3. {{subspace.addUser(subSpace, userFirstName, userLastName, userLogin, userPassword, email)}}
+Add a user account to a sub-space
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+* userFirstName (string): First name of the user
+* userLastName (string): Last name of the user
+* userLogin (string): User login to access the new space
+* userPassword (string): User password to access the new space
+* email (string): E-mail address to reach the customer
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = addUser
+space = John Doe
+subSpace = <string>
+userFirstName = <string>
+userLastName = <string>
+userLogin = <string>
+userPassword = <string>
+email = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.listUsers}
+h3. {{subspace.listUsers(subSpace)}}
+List of all user accounts in this sub-space
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = listUsers
+space = John Doe
+subSpace = <string>
+{noformat}
+
+h4. {{Return}}
+dict, \{userLogin:\{firstName::string,;lastName:string,email:string\},...\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.deleteUser}
+h3. {{subspace.deleteUser(subSpace, userLogin)}}
+Delete a user account from the sub-space
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+* userLogin (string): Login of the user account which you want to delete
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = deleteUser
+space = John Doe
+subSpace = <string>
+userLogin = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.updateUser}
+h3. {{subspace.updateUser(subSpace, userLogin, userFirstName, userLastName, userPassword, email)}}
+Update the information of a user account. If the value of a parameter is empty, the original value is taken
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+* userLogin (string): User login to access the new space
+* userFirstName (string): First name of the user
+* userLastName (string): Last name of the user
+* userPassword (string): User password to access the new space
+* email (string): E-mail address to reach the customer
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = updateUser
+space = John Doe
+subSpace = <string>
+userLogin = <string>
+userFirstName = <string>
+userLastName = <string>
+userPassword = <string>
+email = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.getCreditInfo}
+h3. {{subspace.getCreditInfo(subSpace)}}
+Get the credit information: total, used and available credits in the subspace
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = getCreditInfo
+space = John Doe
+subSpace = <string>
+{noformat}
+
+h4. {{Return}}
+dict(dict),\{total:  \{processingCredits: integer, storageCredits: integer, networkCredits: integer\},used: \{processingCredits: integer, storageCredits: integer, networkingCredits: integer\},available: \{processingCredits: integer, storageCredits: integer, networkingCredits: integer\}\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.addPublicIpRange}
+h3. {{subspace.addPublicIpRange(subSpace, publicIpRange)}}
+Add a public IP range to a Space, required to create VPDCs with public IP addresses
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+* publicIpRange (string): Name of the public IP range
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = addPublicIpRange
+space = John Doe
+subSpace = <string>
+publicIpRange = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=subspace.removePublicIpRange}
+h3. {{subspace.removePublicIpRange(subSpace, publicIpRange)}}
+Remove a public IP range from a Space. This function fails if the public IP range is still in use in a VPDC
+
+h4. {{Parameters}}
+* subSpace (string): Name of the sub-space
+* publicIpRange (string): Name of the public IP range
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = subspace
+action = removePublicIpRange
+space = John Doe
+subSpace = <string>
+publicIpRange = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}

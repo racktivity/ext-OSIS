@@ -1,0 +1,7 @@
+
+
+
+machine.guid, machine.name, machine.description, viewername=user.name, viewerguid=user.guid, ipaddr, lan.name, lan.guid
+
+lan = connected lan's to machine
+viewer=user who has view rights on machine

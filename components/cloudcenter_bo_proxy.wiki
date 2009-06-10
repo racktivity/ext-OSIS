@@ -1,0 +1,13 @@
+
+is a proxy server which gives access to all def:bo_portal 's over https.
+acts like a reverse proxy (means like a webserver)
+
+url:
+
+{code}
+https://[cloudcenter_bo_proxy]/[bo_env_guid]/[the url of the bo_portal]
+{code}
+
+because of the guid only users who know the guid have access to a def:bo_env
+
+this allows access to the bo_portals without vpn 

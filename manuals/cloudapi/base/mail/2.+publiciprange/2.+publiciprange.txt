@@ -1,0 +1,174 @@
+h2. {{Email Cloud API DOC for cloud object}} publiciprange
+{multi-excerpt:name=publiciprange.list}
+h3. {{publiciprange.list()}}
+List of all public IP ranges
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = list
+space = John Doe
+{noformat}
+
+h4. {{Return}}
+dict, \{publicIPRangeName:"StartIPAddress-StopIPAddress",...\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.listInVpdc}
+h3. {{publiciprange.listInVpdc(vpdc)}}
+List of all public IP ranges in a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = listInVpdc
+space = John Doe
+vpdc = <string>
+{noformat}
+
+h4. {{Return}}
+dict, \{publicIPRangeName:"StartIPAddress-StopIPAddress",...\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.listWithFreeIPAddresses}
+h3. {{publiciprange.listWithFreeIPAddresses()}}
+List of all public IP ranges which have one or more free IP addresses
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = listWithFreeIPAddresses
+space = John Doe
+{noformat}
+
+h4. {{Return}}
+dict, The keys are the names of the public IP ranges, the values are lists of free IP Addresses. \n Public IP ranges without free addresses are not included. (So an empty list will never appear as value.) \n Example: \{publicipRangeName, ["1.2.3.4", "1.2.3.6"],...\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.listFreeIPFromIPRange}
+h3. {{publiciprange.listFreeIPFromIPRange(name)}}
+List of free IP addresses in a public IP range. If the name is empty, you get the free IP addresses of all public IP ranges
+
+h4. {{Parameters}}
+* name (string): Name of a public IP range. The name is unique within space
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = listFreeIPFromIPRange
+space = John Doe
+name = <string>
+{noformat}
+
+h4. {{Return}}
+[], list of free IP addresses
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.rename}
+h3. {{publiciprange.rename(oldName, newName)}}
+Rename a public IP range, the original name is given by the cloud provider, the cloud user can change it.
+
+h4. {{Parameters}}
+* oldName (string): Name of the public IP range, given by the cloud provider
+* newName (string): New name of the public IP range
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = rename
+space = John Doe
+oldName = <string>
+newName = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.getDetails}
+h3. {{publiciprange.getDetails(name)}}
+Get the details of a public IP range
+
+h4. {{Parameters}}
+* name (string): Name of a public IP range. The name is unique within space
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = getDetails
+space = John Doe
+name = <string>
+{noformat}
+
+h4. {{Return}}
+dict, \{name: string, customer: string, network: string, netmask: string,startiprange: string,stopiprange: string,gateway: string, domainnameservers: string\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.split}
+h3. {{publiciprange.split(name, newIpRangeName, nrOfIps)}}
+Split an existing IP range into subranges. The original IP ranges are given by the cloud provider.
+
+h4. {{Parameters}}
+* name (string): Name of a public IP range. The name is unique within space
+* newIpRangeName (string): Name of new public IP range
+* nrOfIps (integer): Number of IP addresses for the new IP range
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = split
+space = John Doe
+name = <string>
+newIpRangeName = <string>
+nrOfIps = <integer>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=publiciprange.delete}
+h3. {{publiciprange.delete(name)}}
+Delete a public IP range
+
+h4. {{Parameters}}
+* name (string): Name of a public IP range. The name is unique within space
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = publiciprange
+action = delete
+space = John Doe
+name = <string>
+{noformat}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}

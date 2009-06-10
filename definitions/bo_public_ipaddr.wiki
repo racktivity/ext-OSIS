@@ -1,0 +1,7 @@
+
+
+* public ip address on comp:cloudcenter_vpnserver which maps through portforwarding on def:bo_private_ipaddr
+* can be used by a def:bo_operator to access a remote comp:bo_recoverymachine
+
+
+

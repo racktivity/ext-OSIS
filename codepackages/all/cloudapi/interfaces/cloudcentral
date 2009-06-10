@@ -1,0 +1,109 @@
+10. category cloudcentral_acl:
+
+    createUser(login, password, description) #Create a new user
+    @param login string, Login of user
+    @param password string, Password of user
+    @param description string, Description of user
+    @return guid #Global unique identifier of this user
+
+    removeUser(login) #Remove the user specified
+    @param login @SEE::cloudcentral_acl.createUser
+    @return True or Error
+
+    createGroup(name, description) #Create a new group
+    @param name string, Name of group
+    @param description string, Description of group
+    @return guid #Global unique identifier of this group
+
+    removeGroup(name) #Remove the group specified
+    @param name @SEE::cloudcentral_acl.createGroup
+    @return True or Error
+
+    addUserToGroup(login, group) #Add the user to the group specified
+    @param login @SEE::cloudcentral_acl.createUser
+    @param group string, Name of group
+    @return True or Error
+
+    removeUserFromGroup(login, group) #Remove the user from the group specified
+    @param login @SEE::cloudcentral_acl.createUser
+    @param group @SEE::cloudcentral_acl.addUserToGroup
+    @return True or Error
+
+    listPermissions() #List all known permissions
+    @return list of rights (Read, Write, Execute, ...)
+     
+    grantUserPermissionToMachine(machine, login, permission) #Grant user permission
+    @param machine guid, Global unique identifier of machine
+    @param login @SEE::cloudcentral_acl.createUser
+    @param permission string, Type of permission (Read, Write, Execute, ...)
+    @return True or Error
+
+    revokeUserPermissionToMachine(machine, login, permission) #Revoke user permission
+    @param machine guid, Global unique identifier of machine
+    @param login @SEE::cloudcentral_acl.createUser
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+    grantGroupPermissionToMachine(machine, group, permission) #Grant group permission
+    @param machine guid, Global unique identifier of machine
+    @param group string, Name of group
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+    revokeGroupPermissionToMachine(machine, group, permission) #Revoke group permission
+    @param machine guid, Global unique identifier of machine
+    @param group @SEE::cloudcentral_acl.grantGroupPermissionToMachine
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+    grantUserPermissionToUser(login, logingranted, permission) #Grant user permission
+    @param login @SEE::cloudcentral_acl.createUser
+    @param logingranted string, Login of the user who is granted access
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+    revokeUserPermissionToUser(login, loginrevoked, permission) #Revoke user permission
+    @param login @SEE::cloudcentral_acl.createUser
+    @param loginrevoked string, Login of the user who is revoked access
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+    grantGroupPermissionToUser(login, group, permission) #Grant group permission
+    @param login @SEE::cloudcentral_acl.createUser
+    @param group @SEE::cloudcentral_acl.grantGroupPermissionToMachine
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+    revokeGroupPermissionToUser(login, group, permission) #Revoke group permission
+    @param login @SEE::cloudcentral_acl.createUser
+    @param group @SEE::cloudcentral_acl.grantGroupPermissionToMachine
+    @param permission @SEE::cloudcentral_acl.grantUserPermissionToMachine
+    @return True or Error
+
+11. category cloudcentral_machines:
+
+    listMachineTypes() #List of all possible machine types
+    @return list of machine types
+
+    listIpAddressTypes() #List of all possible IP address types
+    @return list of IP address types
+
+    addBoxOffice(zenithid) #Add a new BoxOffice environment
+    @param zenithid string, Zenith's unique idenfifier
+    @return guid # Global unique identifier for this BoxOffice environment
+
+    removeBoxOffice(zenithid) #Remove this BoxOffice environment
+    @param zenithid @SEE::cloudcentral_machines.addBoxOffice
+    @return True or Error
+
+    addMachine(boxoffice, zenithid, name, type, ipaddresses) #Add a machine to a BoxOffice environment
+    @param boxoffice guid, Global unique identifier of a BoxOffice environment
+    @param zenithid @SEE::cloudcentral_machines.addBoxOffice
+    @param type string, Type of machine
+    @param ipaddresses 	list, List of tuples holding IP address and type
+    @return guid # Global unique idenfifier for this BoxOffice environment
+
+    removeMachine(boxoffice, zenithid) #Remove a machine from a BoxOffice environment
+    @param boxoffice @SEE::cloudcentral_machines.addMachine
+    @param zenithid @SEE::cloudcentral_machines.addBoxOffice
+    @return True or Error

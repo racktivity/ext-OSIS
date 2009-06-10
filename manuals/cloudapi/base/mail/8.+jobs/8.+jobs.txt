@@ -1,0 +1,40 @@
+h2. {{Email Cloud API DOC for cloud object}} jobs
+{multi-excerpt:name=jobs.list}
+h3. {{jobs.list()}}
+List all the jobs linked to this subspace, return the id and a short description
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = jobs
+action = list
+space = John Doe
+{noformat}
+
+h4. {{Return}}
+array(dict)  , [\{ID: integer, status:string,qactionName: string,rootobjectName: string,starttime: string, endtime:string\}]
+
+{multi-excerpt}
+
+{multi-excerpt:name=jobs.getDetailedInfo}
+h3. {{jobs.getDetailedInfo(id)}}
+Get detailed info of a specific job
+
+h4. {{Parameters}}
+* id (integer): identifier for the job
+
+h4. {{Example}}
+{noformat}
+login = john
+passwd = secret
+category = jobs
+action = getDetailedInfo
+space = John Doe
+id = <integer>
+{noformat}
+
+h4. {{Return}}
+dict
+
+{multi-excerpt}

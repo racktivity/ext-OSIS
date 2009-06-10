@@ -1,0 +1,77 @@
+h2. {{PyMonkey Cloud API DOC for cloud object}} disk
+{multi-excerpt:name=disk.listDisks}
+h3. {{disk.listDisks(vpdc, machine)}}
+List all disks for the machine specified
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine. The name is a freely chosen name, which has to be unique in SPACE
+
+h4. {{Example}}
+{code}
+cloudApiConnection.disk.listDisks(vpdc, machine)
+{code}
+
+h4. {{Return}}
+dict, \{"disk": string, "properties": \{"name": string, "type": string, "iscsitarget": boolean\}\} #Return a dict where disk is the guid of the disk and properties is a dict of most relevant disk properties
+
+{multi-excerpt}
+
+{multi-excerpt:name=disk.listSnapshots}
+h3. {{disk.listSnapshots(vpdc, machine, disk)}}
+List all snapshots for the machine and disk specified
+
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine. The name is a freely chosen name, which has to be unique in SPACE
+* disk (string): GUID of the disk
+
+h4. {{Example}}
+{code}
+cloudApiConnection.disk.listSnapshots(vpdc, machine, disk)
+{code}
+
+h4. {{Return}}
+dict, \{"snapshot": string, "properties": \{"name": string, "creationdate": string\}\} #Return a dict where snapshot is the guid of the snapshot and properties is a dict of most relevant snapshot properties
+
+{multi-excerpt}
+
+{multi-excerpt:name=disk.exposeISCSITarget}
+h3. {{disk.exposeISCSITarget(vpdc, machine, disk, snapshot)}}
+Create a clone of the snapshot specified and expose it as an ISCSI target
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine. The name is a freely chosen name, which has to be unique in SPACE
+* disk (string): GUID of the disk
+* snapshot (string): GUID of the snapshot
+
+h4. {{Example}}
+{code}
+cloudApiConnection.disk.exposeISCSITarget(vpdc, machine, disk, snapshot)
+{code}
+
+h4. {{Return}}
+string #ISCSI IQN of the newly exposed target
+
+{multi-excerpt}
+
+{multi-excerpt:name=disk.removeISCSITarget}
+h3. {{disk.removeISCSITarget(vpdc, machine, disk)}}
+Delete the ISCSI target for the disk
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine. The name is a freely chosen name, which has to be unique in SPACE
+* disk (string): GUID of the disk
+
+h4. {{Example}}
+{code}
+cloudApiConnection.disk.removeISCSITarget(vpdc, machine, disk)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}

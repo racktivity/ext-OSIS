@@ -1,0 +1,7 @@
+h2. intro
+
+goal, deliver a first working but very easy to implement monitoring system which can allow us to launch boxoffice asap.
+
+components used
+* osis
+* 

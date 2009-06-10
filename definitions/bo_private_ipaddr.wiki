@@ -1,0 +1,9 @@
+
+
+* private ip address on comp:cloudcenter_vpnserver
+* each def:bo_env has a unique ip addr on each comp:cloudcenter_vpnserver he is connected to (at least 2)
+* this ip address is not accessible from the internet.
+* only when specific portforwarding rules are setup or def:master_operator 's using a openvpn connection into comp:cloudcenter_vpnserver this ip address is accessible.
+
+
+

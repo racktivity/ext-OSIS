@@ -1,0 +1,23 @@
+
+registration service of def:boxofficeEnvironment = comp:cloudcenter_applicationserver_registration
+the cloudcenter_applicationserver_registration makes sure the boxoffice environment get's registered and required info get's stored in def:cloudcenter_db.
+
+*****************
+
+registration information
+* def:bo_env_guid  
+* one or more def:user_id with corresponding passwords , these users will get rights to manage the boxofficeEnvironment
+* optional: location_description (e.g. location info)
+* optional: support_info (e.g. certain things to know when supporting this def:bo_env)
+* optional: info (e.g. generic usefull info)
+
+process
+* ask def:bo_env_guid
+* check on comp:cloudcenter_applicationserver_registration if def:bo_env exists
+** if not exists error tell to contact zenith_noc
+
+the 
+
+information returned
+* unique GUID which will be used for watchdog mechanism as well.
+

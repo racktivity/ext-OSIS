@@ -1,0 +1,6 @@
+
+is main gui for management of def:boxofficeEnvironment
+is a wiki system in which monitoring info, events, configuration mgmt is being done.
+
+*****************
+is implementation from defs:qportal

@@ -1,0 +1,11 @@
+
+an osis database for cloudcenter (behind a postgresql stores the data)
+mode stored in database
+- boxoffice installations (GUID)
+- information from the installation (a description)
+- users: customers / resellers / ...
+- permissions
+- pmachines in each boxoffice
+- events
+
+unique id for a boxoffice is a GUID

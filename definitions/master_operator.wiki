@@ -1,0 +1,4 @@
+
+an operater with super rights.
+Only a few people in Zenith and/or A-server have these rights.
+the can access all comp:cloudcenter's as well as def:bo_env

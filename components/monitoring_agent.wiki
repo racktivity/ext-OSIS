@@ -1,0 +1,7 @@
+
+is python daemon which collects various system information and stores it in OSIS DB.
+some examples of information captured
+* cpu usage of vmachines
+* io stats
+* ...
+

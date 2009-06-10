@@ -1,0 +1,437 @@
+h2. {{PyMonkey Cloud API DOC for cloud object}} machine
+{multi-excerpt:name=machine.createByIP}
+h3. {{machine.createByIP(vpdc, name, templateName, description, ipAddresses, capacityProperties, properties)}}
+Create a machine starting from a simple set of parameters. This method uses IP addresses as input
+
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* name (string): Name of the machine. The name is a freely chosen name, which has to be unique in SPACE
+* templateName (string): Name of a machine template, which must exist in the Space. To obtain the list of available machine templates, run machinetemplate.list()
+* description (string): This is free text describing the purpose of the machine, if multi-line use back-slash + n
+* ipAddresses (list(string)): Is a list of IP addresses which will be given to a machine. The CloudAPI checks if these IP addresses exist on Public Networks or Private Networks which belong to the customer, if not an error is thrown
+* capacityProperties (dict): The keys of the dict are the names of capacity properties, the values of the dict must be possible values for the capacity property.
+Example: \{"Machine Performance": "200MB RAM + 800Mhz CPU", "Data Disk": "10GB"\}
+If you want to know the possible names/values, run machinetemplate.list() and machinetemplate.getDetails(templateName).
+* properties (dict): This is a dict of property/value pairs as part of the capacityProperties dict. The parameter names must be existing properties for the chosen machine template,
+If you want to know the possibilities, see machinetemplate.list() and machinetemplate.getDetails(templateName).
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.createByIP(vpdc, name, templateName, description, ipAddresses, capacityProperties, properties)
+{code}
+
+h4. {{Return}}
+Machine name
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.createByNetwork}
+h3. {{machine.createByNetwork(vpdc, name, templateName, description, publicIPRange, privateNetworks, capacityProperties, properties)}}
+Create a machine starting from a simple set of parameters. This method uses predefined network names as input. The IP addresses are chosen automatically.
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* name (string): Name of the machine. The name is a freely chosen name, which has to be unique in SPACE
+* templateName (string): Name of a machine template, which must exist in the Space. To obtain the list of available machine templates, run machinetemplate.list()
+* description (string): This is free text describing the purpose of the machine, if multi-line use back-slash + n
+* publicIPRange (string): The name of an existing publicIPRange. The CloudAPI will check if there are IP addresses available on the defined IPRANGE, if not an error is thrown. One IP address will be given.
+To know the list of network names, use: publiciprange.list()
+If you want to know if there are free IP addresses, use publiciprange.listFreeIP() .
+If you do not specify this parameter (""), the machine will not be connected to a public network.
+* privateNetworks (list(string)): Is a list of private networks names. The machine will be connected to one of these private networks upon the deployment of the machine. An error will be thrown if the private networks don't exist in the space, or if there are no IP addresses available on the private network.
+If one or more private networks do not belong to the VPDC, they will be added automatically.
+The machine will get one IP address from each private network.
+To know which network names do exist use: privatenetwork.list().  To know the free IP addresses, use privatenetwork.listFreeIP().
+If the private network does not exist in the VPDC, the CloudAPI links it to the VPDC automatically. The first Public Network will be assigned to the Pubic Network object that is present in the VPDC by default. For additional Public Networks, objects will be created automatically.
+* capacityProperties (dict): The keys of the dict are the names of capacity properties, the values of the dict must be possible values for the capacity property.
+Example: \{"Machine Performance": "200MB RAM + 800Mhz CPU", "Data Disk": "10GB"\}
+If you want to know the possible names/values, run machinetemplate.list() and machinetemplate.getDetails(templateName).
+* properties (dict): This is a dict of property/value pairs as part of the capacityProperties dict. The parameter names must be existing properties for the chosen machine template,
+If you want to know the possibilities, see machinetemplate.list() and machinetemplate.getDetails(templateName).
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.createByNetwork(vpdc, name, templateName, description, publicIPRange, privateNetworks, capacityProperties, properties)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.ipAddressAdd}
+h3. {{machine.ipAddressAdd(vpdc, machine, ipAddress)}}
+A new IP address and/or private or public LAN will be added to an existing virtual machine. If required a new Private LAN or Public LAN  will be attached to the machine (Only implemented for public IP addresses now)
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* ipAddress (string): IP address to be added to the machine. The CloudAPI checks if this IP address exists in a private or publick network. Use privatenetwork.listFreeIP() or publiciprange.listFreeIPFromIPRange() to check which IP addresses can be used
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.ipAddressAdd(vpdc, machine, ipAddress)
+{code}
+
+h4. {{Return}}
+string with IP address
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.ipAddressDelete}
+h3. {{machine.ipAddressDelete(vpdc, machine, ipAddress)}}
+Delete an IP address from a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* ipAddress (string): IP address to be removed from the machine. Use machine.getMachineDetails(vpdc, machine) to know the IP addresses of the machine.
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.ipAddressDelete(vpdc, machine, ipAddress)
+{code}
+
+h4. {{Return}}
+string with IP address
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.delete}
+h3. {{machine.delete(vpdc, machine)}}
+Remove a machine from a VPDC, but keep the machine in the model.
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.delete(vpdc, machine)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.rename}
+h3. {{machine.rename(vpdc, oldName, newName)}}
+Rename a machine in a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* oldName (string): The current name of the machine
+* newName (string): The new name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.rename(vpdc, oldName, newName)
+{code}
+
+h4. {{Return}}
+New name of the machine
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.setDescription}
+h3. {{machine.setDescription(vpdc, machine, description)}}
+Set a description on a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* description (string): New description of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.setDescription(vpdc, machine, description)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.list}
+h3. {{machine.list(vpdc)}}
+list machines in a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.list(vpdc)
+{code}
+
+h4. {{Return}}
+[], list of machine names
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.start}
+h3. {{machine.start(vpdc, machine)}}
+Start a machine (if machine is hibernated use machine.resume())
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.start(vpdc, machine)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.stop}
+h3. {{machine.stop(vpdc, machine)}}
+Shut down a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.stop(vpdc, machine)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.reboot}
+h3. {{machine.reboot(vpdc, machine)}}
+Reboot a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.reboot(vpdc, machine)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.backup}
+h3. {{machine.backup(vpdc, machine)}}
+Create a backup of a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.backup(vpdc, machine)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.listBackups}
+h3. {{machine.listBackups(vpdc, machine)}}
+List with all the backups of a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.listBackups(vpdc, machine)
+{code}
+
+h4. {{Return}}
+[], list with the names of the backups of the machine
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.restoreBackup}
+h3. {{machine.restoreBackup(vpdc, machine, backup)}}
+Restore a backup and remove the current machine state
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* backup (string): Name of the backup to restore
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.restoreBackup(vpdc, machine, backup)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.exportBackup}
+h3. {{machine.exportBackup(vpdc, machine, backup, target, targetLogin, targetPassword)}}
+Export a backup to a remote location
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* backup (string): Name of the backup to export
+* target (string): Location where the backup should be saved
+* targetLogin (string): Login to access the remote target
+* targetPassword (string): Password linked to the login, to allow  access to the target location
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.exportBackup(vpdc, machine, backup, target, targetLogin, targetPassword)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.listCapacityProperties}
+h3. {{machine.listCapacityProperties(vpdc, machine)}}
+List all Capacity Properties and their corresponding values on a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.listCapacityProperties(vpdc, machine)
+{code}
+
+h4. {{Return}}
+dict, "capacityProperty: string"
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.listProperties}
+h3. {{machine.listProperties(vpdc, machine)}}
+List of all properties of a machine and their corresponding values
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.listProperties(vpdc, machine)
+{code}
+
+h4. {{Return}}
+dict, "property: string"
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.setCapacityProperty}
+h3. {{machine.setCapacityProperty(vpdc, machine, capacityproperty, value)}}
+Set a value for a capacity property on a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* capacityproperty (string): Name of the capacity property
+* value (string): Value for the capacity property
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.setCapacityProperty(vpdc, machine, capacityproperty, value)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.setProperty}
+h3. {{machine.setProperty(vpdc, machine, property, value)}}
+Set a value for a property on a machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* property
+* value
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.setProperty(vpdc, machine, property, value)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.getMachineDetails}
+h3. {{machine.getMachineDetails(vpdc, machine)}}
+Get the details of a machine, such as machine name, status, memory, CPU, ...
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.getMachineDetails(vpdc, machine)
+{code}
+
+h4. {{Return}}
+\{ name: <string>, runStatus: <string>, modelStatus: <string>, description: <string>, hostname: <string>, os: <string>, cpu: <int>, memory: <int>, \n networkinterfaces:  [ \{ nic: <string>, macaddress: <string>, ipaddress: <string>, netmask: <string>, gateway: <string> \} , ... ], \n backups:            [ \{ name: <string>, type: <string>, created: <datetime> \} , ... ], \n services:           [ \{ application: <string>, enabled: <boolean>, login: <string> \} , ... ], \n capacityProperties: \{ propertyName(string): value(string), ...\}, \n properties:         \{ propertyName(string): value(string), ...\} \n \} \n The runsStatus-string is one of the DRP Machine statuses. ("halted", "running", "paused", ...), the modelStatus-string is one of the vpdcObjectStatuses ("deployed", "error", ...) \n CPU is in Mhz, memory is in MB RAM. \n Newlines in the description are encoded as backslash-n.
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.executeQshellScript}
+h3. {{machine.executeQshellScript(vpdc, machine, qshellScriptContent)}}
+Execute a Q-Shell script on a machine. This function requires a Q-Agent on the machine
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+* machine (string): Name of the machine
+* qshellScriptContent
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.executeQshellScript(vpdc, machine, qshellScriptContent)
+{code}
+
+h4. {{Return}}
+dict, \{"jobGuid: string,status:string\}
+
+{multi-excerpt}
+
+{multi-excerpt:name=machine.copyFromTemplate}
+h3. {{machine.copyFromTemplate(sourcevpdc, targetvpdc, machine, nameOfCopy)}}
+Copy a machine, independent if the machine is deployed or not. The disks will have the original template-content, but the CapacityProperties and Properties are copied to the new machine.
+The copied machine is automatically connected to the same public and private networks as the original machine, with an arbitrary IP address. If one of the connected networks has insufficient free IP addresses, an error is thrown.
+
+h4. {{Parameters}}
+* sourcevpdc (string): Name of the VPDC (Virtual Data Center) from which we want to copy a machine
+* targetvpdc (string): Name of the VPDC (Virtual Data Center) in which we want to create a machine
+* machine (string): Name of the machine
+* nameOfCopy (string): New name for the created copy
+
+h4. {{Example}}
+{code}
+cloudApiConnection.machine.copyFromTemplate(sourcevpdc, targetvpdc, machine, nameOfCopy)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}

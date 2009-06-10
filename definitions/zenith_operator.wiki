@@ -1,0 +1,8 @@
+person from zenith noc who manages the boxoffices in the field.
+
+main tasks
+* respond on events
+* troubleshooting
+* configuration management
+* installation
+* support

@@ -1,0 +1,139 @@
+h2. information gathered from bo cpu & storage nodes.
+
+this info is stored in comp:bo_monitor_db
+for more detailed model info see model:monitoringModelOsis.py
+
+{code}
+Device  
+    drpguid #if also known in DRP
+    motherboard
+        tempsensors[]
+            description
+            temp
+            tempavgLastHour
+        fans[]
+            description
+            speed            
+    memory      
+        description    
+        mbcapacity
+        mbused
+
+    cpu
+        nrcores
+        mhzcapacity  #if 4 cores found & each 2Ghz, mhzcapacity=8000
+        mhzused
+        mhzUsedAvgLastHour
+
+    disks[]
+        description
+        deviceid  #string which defines location the device e.g. /dev/sda on linux on windows ??? 
+        gbcapacity
+        type #e.g. sata
+        smartinfo
+            temp
+            ...
+    nics
+        type #e.g. ethernet, infiniband
+        dev
+        fullduplex #True/False
+        speed #100mbit, ...
+        macaddress
+        ...    
+    pcicards[]
+        type
+        description
+            
+Event
+    drpguid
+    logs[]
+        osisguid
+    traceback
+    type #windowsevents, pymonkeyevents, syslog, ...
+    severity
+    description
+    source
+
+Log  #non versioned in OSIS, is on file level (detect if new files on appropriate locations), NOT SYSLOG (is event)
+    drpguid
+    source
+    filepath
+    agentguid
+    level
+    content
+    creationdate
+    type (e.g. job,pymonkeylog, ...)
+    
+pmachine
+    drpguid #if also known in DRP
+    timestamp
+    hypervisors[]
+        type  #virtualbox, xen, solariszones, ...
+
+    swap
+        deviceid #where on system 
+        gbcapacity
+        gbused
+    zfs
+        storagepools[]
+            gbcapacity
+            gbused
+            status
+            name
+            vdevs[]
+                name
+                type
+                ...
+            filesystems[]
+                ....
+            zvols[]
+                ....
+    partitions
+        deviceid  #string which defines location of partition e.g. /dev/sda1 on linux on windows ???
+        type #e.g. ext3
+        gbcapacity
+        gbused
+    nics
+        type #e.g. ethernet
+        virtual #True/False e,g. crossbow
+        speed #100mbit, ...
+        ipaddresses[]
+            subnet
+            ...
+        macaddress
+        mbsend   #mbytes send, is absolute number
+        bandwithSendOverLastHour #mbit
+        #same for receive
+        nrpacketssec #usefull to detect DOS attack
+        #same for receive
+        
+    processes[]
+        name
+        memused
+        cpuused
+        cpuusedAvgLastHour
+        pid
+        ...
+
+vmachine
+    drpguid #if also known in DRP
+    hypervisortype
+    performance
+        nrcores 
+        percUsedInRelationTo1PhsyicalCore  #e.g. vmachine uses 90% of 1 core 
+        percUsedInRelationTo1PhsyicalCoreAvgLastHour  #e.g. vmachine uses 90% of 1 core during last hour, in other words serious issue, can be like 300%        
+    cpu
+        cores
+             link to core on device (if relevant)
+    memory            
+        mbcapacity
+    vnics
+        linkToPmachineNic
+    vdisks
+        imagePath #option
+        zvolId
+        partitionId
+
+
+
+{code}

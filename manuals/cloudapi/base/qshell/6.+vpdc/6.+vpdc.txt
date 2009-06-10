@@ -1,0 +1,123 @@
+h2. {{PyMonkey Cloud API DOC for cloud object}} vpdc
+{multi-excerpt:name=vpdc.create}
+h3. {{vpdc.create(vpdc)}}
+Create a new VPDC, based on a VPDC-template
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.create(vpdc)
+{code}
+
+h4. {{Return}}
+string, name of the VPDC
+
+{multi-excerpt}
+
+{multi-excerpt:name=vpdc.delete}
+h3. {{vpdc.delete(vpdc)}}
+Delete a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.delete(vpdc)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=vpdc.deploy}
+h3. {{vpdc.deploy(vpdc)}}
+Deploy a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.deploy(vpdc)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=vpdc.list}
+h3. {{vpdc.list()}}
+Get a list of all VPDCs
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.list()
+{code}
+
+h4. {{Return}}
+tuple of VPDC names
+
+{multi-excerpt}
+
+{multi-excerpt:name=vpdc.start}
+h3. {{vpdc.start(vpdc)}}
+Start all machines in a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.start(vpdc)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=vpdc.stop}
+h3. {{vpdc.stop(vpdc)}}
+Stop all machines in a VPDC
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.stop(vpdc)
+{code}
+
+h4. {{Return}}
+True or Error
+
+{multi-excerpt}
+
+{multi-excerpt:name=vpdc.getDeployStatus}
+h3. {{vpdc.getDeployStatus(vpdc)}}
+Get the deploy-status of the VPDC.
+Mapping of DRP states on CloudAPI states:
+* DRP UNCONFIGURED, CONFIGURED, MODELED  => CloudAPI UNDEPLOYED
+* DRP PROCESSING, DEPLOYING  => CloudAPI DEPLOYING
+* DRP DEPLOYED  => CloudAPI
+DEPLOYED * DRP CHANGED  => CloudAPI CHANGED
+* DRP DELETE, DELETED, DELETING  => CloudAPI UNDEPLOYING
+* DRP ERROR  => CloudAPI ERROR
+
+h4. {{Parameters}}
+* vpdc (string): Name of VPDC
+
+h4. {{Example}}
+{code}
+cloudApiConnection.vpdc.getDeployStatus(vpdc)
+{code}
+
+h4. {{Return}}
+String: "UNDEPLOYED", "DEPLOYING", "DEPLOYED", "CHANGED", "UNDEPLOYING"or "ERROR"
+
+{multi-excerpt}
