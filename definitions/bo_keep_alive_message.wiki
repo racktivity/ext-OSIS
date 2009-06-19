@@ -1,8 +1,0 @@
-
-Is a message being send to defs:cloudcenter which tells cloudcenter that BO environment is still alive and kicking.
-
-mechanism:
-- xmlrpc call to comp:cloudcenter_applicationserver
-- id = guid of def:boxofficeEnvironment
-
-

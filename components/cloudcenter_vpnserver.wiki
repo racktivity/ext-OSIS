@@ -1,8 +1,0 @@
-
-vpnserver acts like a proxy between different def:bo_env and the def:bo_operator.
-each bo_env has an open vpn connection to at least 2 cloudcenter_vpnserver 's
-
-***************
-
-technology used
-* openvpn

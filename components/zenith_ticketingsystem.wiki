@@ -1,8 +1,0 @@
-
-chosen ticketing system by zenith.
-All worth to be escalated events arive in this ticketing system
-
-- customer requests
-- events in the field e.g. boxofficeEnvironment not reachable, e.g. disk full, ...
-
-

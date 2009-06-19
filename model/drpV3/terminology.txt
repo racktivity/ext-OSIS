@@ -1,5 +1,0 @@
-
-cloudspace
-cloudservice
-cloudservicetemplate
-vdc = virtual datacenter  = grouping of cloudservices

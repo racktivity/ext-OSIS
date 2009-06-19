@@ -1,1 +1,0 @@
-@include bo_mgmt_appliance

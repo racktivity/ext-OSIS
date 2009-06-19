@@ -1,7 +1,0 @@
-
-person who manages a def:boxofficeEnvironment
-
-operator can be
-* enduser who bought boxoffice
-* reseller who sold boxoffice environment
-* def:zenith_operator

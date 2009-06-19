@@ -1,8 +1,0 @@
-person from aserver support or operational team who manages the daas clouds
-
-main tasks
-* respond on events
-* troubleshooting
-* configuration management
-* installation
-* support

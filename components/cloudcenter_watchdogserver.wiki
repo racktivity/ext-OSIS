@@ -1,5 +1,0 @@
-
-Is a service (in applicationserver) which gets keep alive messages from all boxoffice environments within 15 minutes.
-If the keep alive message did not arive in time an event is being sent.
-
-The keep alive message is being identified by guid of boxoffice_installation.

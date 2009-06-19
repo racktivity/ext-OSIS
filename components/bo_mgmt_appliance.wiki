@@ -1,7 +1,0 @@
-is virtual or physical management appliance which controls boxofficeEnvironment 
-
-
-*************************
-
-on which qlayer software is being installed.
-see [dmachine] for more info.

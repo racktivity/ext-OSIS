@@ -1,2 +1,0 @@
-
-Unique id which identified a def:cloudcenter_user

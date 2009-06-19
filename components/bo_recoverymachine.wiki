@@ -1,5 +1,0 @@
-
-Is windows XP virtualmachine running on one of the CPU nodes (512MB ram is enough) which allows remote management of the BO environment.
-A def:bo_operator can administer a BO environment by using this virtual machine.
-
-
