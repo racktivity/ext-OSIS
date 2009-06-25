@@ -190,8 +190,12 @@ class BaseServer(object):
         if not result:
             logger.debug('[FIND] No results found')
             return (tuple(), tuple())
-
-        logger.debug('[FIND] %d results found' % len(result[1]))
+	
+        # Commenting this line temporarily because "result[1]" leads
+        # to a crash if 'result' is a simple list of guids and contains
+        # a single entry. Need to break this function into two, one 
+        # expecting a 'view' argument, and another not.
+        #logger.debug('[FIND] %d results found' % len(result[1]))
         return result
 
     # Abstract methods
