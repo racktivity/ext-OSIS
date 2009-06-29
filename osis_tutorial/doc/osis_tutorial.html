@@ -1,0 +1,106 @@
+<HEAD>
+<TITLE>OSIS Tutorial</TITLE>
+</HEAD>
+
+<BODY BGCOLOR="b0ffb0">
+<CENTER>
+  <H1> OSIS(Object Storage Indexing system) Tutorial</H1>
+
+ 
+</CENTER>
+
+                           
+
+<H3> Package contents:</H3>
+
+        The following list describes the contents in this qpackage.
+	<ul>
+ 	<li> <b>create_init_db.py </b>- Start postgres server and create database therein, to be used from OSIS
+
+ 	<li> <b>create_model_struct_db.py </b>- Connect to postgres server and register the object structure with 
+   	  osis database. Also, register a view with the database, to be used while searching for objects 
+   	  matching a given filter.
+
+	<li> <b>trace_db.py</b> - Trace every function call and execute the same.
+
+	<li> <b>trace_imports.py</b> - Import modules to be used with the trace functionality 
+
+ 	<li> <b>work_with_db.py </b>- Execute functionalities like creating and saving a 
+   	  new object to database, querying and viewing the new object.
+
+ 	<li> <b>remove_db.py </b>- To clean the database.
+
+	<li> <b>company_model.py </b>- Sample model file to be used with the tutorial scripts. This model file shall
+         be copied to '[pymonkey-home]/libexec/osis' and shall be overwritten if it already exists.
+	</ul>
+
+
+<H3>  Requirements:</H3>
+
+	The following framework should be setup on pymonkey qbase(qshell)
+
+	<ul>
+	<li> Install postgresql
+        <li> Install applicationserver
+        <li> Install 'osis' and 'osis_service' qpackages. Please make sure that you have all the tasklets
+             present at: '[pymonkey-home]/apps/applicationServer/services/osis_service/tasklets/tasklets_updated'.
+             If not, copy the same from 'osis_tutorial' image file.
+	</ul>
+
+        
+<H3>  Supported Platforms:</H3>
+
+	The above qpackages installation and scripts will supported on any platform which supports 
+        q-shell and python.
+
+
+<H3> Using the scripts:</H3>
+
+	<ol>
+        <li>Scripts are to be found at following location once 'osis_tutorial' package is installed.
+	<ul>	  
+	<li>/opt/qbase3/apps/osis_tutorial/scripts/
+	</ul>
+	<br>
+        <li>We have used OSIS model files present at '/opt/qbase3/libexec/osis' for this tutorial.
+          Such model files are used to define structures of objects to be stored with OSIS.
+	<br></br>
+        <li>Start up q-shell and run the application server using 'q.manage.applicationserver.start()'. 
+          Subsequently, you can check whether application server is running or not using
+          'q.manage.applicationserver.isRunning()'.
+	<br></br>
+ 	<li>run '%run create_init_db.py' on q-shell prompt
+	<br></br>
+        <li>run '%run create_model_struct_db.py' on q-shell prompt
+	<br></br>
+        <li>import osis module and initialize the osis database with model files 
+     
+	    <ul>
+            <li>'import osis'
+	    <li>osis.init('/opt/qbase3/libexec/osis')
+	    </ul>
+	<br>
+        <li>run '%run work_with_db.py' on q-shell prompt. This script shall create one 'company' object
+           at a time. You can run it multiple no. of times to store multiple objects. However, all of them 
+           shall be the same.
+	<br></br>
+        <li>Finally, you can clean up the database and stop postgres server by running
+           '%run remove_db.py'
+	<br></br>
+        <li>You can as well avoid the above step and exit the q shell. You can then enter the q shell again
+            and repeat steps 6 and 7 to create more objects on to the database. 
+	<br></br>
+        <li>Remember, the database you created is persistent and shall be removed only by running 'remove_db.py' 
+            as mentioned above. You can as well re-start your system, start the application server, and perform steps
+            6 and 7 in order to add more objects. The same shall be added to the one database you created initially and
+            did not remove.
+	</ol>
+
+<H3> Assumptions :</H3> 
+	Assuming all the qpackages(postgresql, applicationserver, osis, osis_service) have been successfully installed
+        on pymonkey qbase shell.
+
+
+
+<center>
+</body> 
