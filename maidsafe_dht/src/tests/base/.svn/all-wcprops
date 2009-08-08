@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/svn/!svn/ver/122/trunk/src/tests/base
+END
+testdetectplatform.cc
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/113/trunk/src/tests/base/testdetectplatform.cc
+END
+testconfigfile.xx
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/11/trunk/src/tests/base/testconfigfile.xx
+END
+testroutingtable.cc
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/113/trunk/src/tests/base/testroutingtable.cc
+END
+testcrypto.cc
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/122/trunk/src/tests/base/testcrypto.cc
+END
+testutils.cc
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/122/trunk/src/tests/base/testutils.cc
+END
+testcalllater.cc
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/113/trunk/src/tests/base/testcalllater.cc
+END
+testcppsqlite.cc
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/117/trunk/src/tests/base/testcppsqlite.cc
+END
+testfilesystemiterator.xx
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/11/trunk/src/tests/base/testfilesystemiterator.xx
+END

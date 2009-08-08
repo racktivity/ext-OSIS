@@ -1,0 +1,233 @@
+K 25
+svn:wc:ra_dav:version-url
+V 32
+/svn/!svn/ver/100/trunk/src/upnp
+END
+xml_parse.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/100/trunk/src/upnp/xml_parse.hpp
+END
+http_parser.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/11/trunk/src/upnp/http_parser.hpp
+END
+time.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/22/trunk/src/upnp/time.hpp
+END
+session_settings.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/upnp/session_settings.hpp
+END
+enum_net.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/100/trunk/src/upnp/enum_net.cpp
+END
+buffer.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/11/trunk/src/upnp/buffer.hpp
+END
+enum_net.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/11/trunk/src/upnp/enum_net.hpp
+END
+size_type.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/11/trunk/src/upnp/size_type.hpp
+END
+proxy_base.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/11/trunk/src/upnp/proxy_base.hpp
+END
+upnp.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/11/trunk/src/upnp/upnp.cpp
+END
+socks5_stream.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/upnp/socks5_stream.cpp
+END
+escape_string.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/100/trunk/src/upnp/escape_string.cpp
+END
+upnp.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/11/trunk/src/upnp/upnp.hpp
+END
+socks5_stream.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/upnp/socks5_stream.hpp
+END
+version.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/svn/!svn/ver/11/trunk/src/upnp/version.hpp
+END
+http_stream.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/11/trunk/src/upnp/http_stream.cpp
+END
+escape_string.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/upnp/escape_string.hpp
+END
+parse_url.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/11/trunk/src/upnp/parse_url.cpp
+END
+socket.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/11/trunk/src/upnp/socket.hpp
+END
+invariant_check.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/11/trunk/src/upnp/invariant_check.hpp
+END
+http_connection.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/11/trunk/src/upnp/http_connection.cpp
+END
+socket_type.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/11/trunk/src/upnp/socket_type.hpp
+END
+http_stream.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/11/trunk/src/upnp/http_stream.hpp
+END
+parse_url.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/11/trunk/src/upnp/parse_url.hpp
+END
+instantiate_connection.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/11/trunk/src/upnp/instantiate_connection.cpp
+END
+http_connection.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/!svn/ver/11/trunk/src/upnp/http_connection.hpp
+END
+connection_queue.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/upnp/connection_queue.cpp
+END
+instantiate_connection.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/11/trunk/src/upnp/instantiate_connection.hpp
+END
+connection_queue.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/upnp/connection_queue.hpp
+END
+config.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/11/trunk/src/upnp/config.hpp
+END
+broadcast_socket.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/upnp/broadcast_socket.cpp
+END
+io.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/svn/!svn/ver/11/trunk/src/upnp/io.hpp
+END
+intrusive_ptr_base.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/11/trunk/src/upnp/intrusive_ptr_base.hpp
+END
+broadcast_socket.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/11/trunk/src/upnp/broadcast_socket.hpp
+END
+socks4_stream.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/upnp/socks4_stream.cpp
+END
+variant_stream.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/11/trunk/src/upnp/variant_stream.hpp
+END
+socks4_stream.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/11/trunk/src/upnp/socks4_stream.hpp
+END
+http_parser.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/11/trunk/src/upnp/http_parser.cpp
+END

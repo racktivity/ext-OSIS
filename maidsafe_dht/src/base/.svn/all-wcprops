@@ -1,0 +1,101 @@
+K 25
+svn:wc:ra_dav:version-url
+V 32
+/svn/!svn/ver/126/trunk/src/base
+END
+routingtable.cc
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/32/trunk/src/base/routingtable.cc
+END
+utils.cc
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn/!svn/ver/122/trunk/src/base/utils.cc
+END
+routingtable.h
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/32/trunk/src/base/routingtable.h
+END
+singleton.h
+K 25
+svn:wc:ra_dav:version-url
+V 43
+/svn/!svn/ver/26/trunk/src/base/singleton.h
+END
+calllatertimer.cc
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/113/trunk/src/base/calllatertimer.cc
+END
+calllatertimer.h
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/108/trunk/src/base/calllatertimer.h
+END
+configfile.h
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/26/trunk/src/base/configfile.h
+END
+config.h
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/26/trunk/src/base/config.h
+END
+rsakeypair.cc
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/122/trunk/src/base/rsakeypair.cc
+END
+rsakeypair.h
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/37/trunk/src/base/rsakeypair.h
+END
+configfile.xx
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/14/trunk/src/base/configfile.xx
+END
+crypto.cc
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/126/trunk/src/base/crypto.cc
+END
+crypto.h
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn/!svn/ver/126/trunk/src/base/crypto.h
+END
+cppsqlite3.cc
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/113/trunk/src/base/cppsqlite3.cc
+END
+nullstream.h
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/14/trunk/src/base/nullstream.h
+END
+cppsqlite3.h
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/14/trunk/src/base/cppsqlite3.h
+END
