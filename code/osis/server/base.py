@@ -126,6 +126,31 @@ class BaseServer(object):
 
         return self._get(object_type, guid, version, serializer)
 
+    def delete(self, object_type, guid):
+        '''Delete an object from the OSIS object store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param guid: GUID of the object to delete
+        @type guid: string
+
+        @return: True or False, according as the deletion succeeds or fails
+        '''
+        raise NotImplementedError
+
+    def delete_version(self, object_type, guid, version):
+        '''Delete a specific version of an object from the OSIS object store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param guid: GUID of the object to delete
+        @type guid: string
+        @param version: Version GUID of the object to delete
+        @type version: string
+
+        @return: True or False, according as the deletion succeeds or fails
+        '''
+        raise NotImplementedError
 
     def put(self, object_type, data, serializer):
         '''Save an object in the OSIS object store
@@ -190,7 +215,7 @@ class BaseServer(object):
         if not result:
             logger.debug('[FIND] No results found')
             return (tuple(), tuple())
-	
+
         # Commenting this line temporarily because "result[1]" leads
         # to a crash if 'result' is a simple list of guids and contains
         # a single entry. Need to break this function into two, one 
@@ -249,5 +274,16 @@ class BaseServer(object):
 
         @return: OSISList formatted resultset
         @rtype: tuple
+        '''
+        raise NotImplementedError
+
+    def runQuery(self, query):
+        '''Run query from OSIS server
+        
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error 
+        @type: List of rows. Each row shall be represented as a dictionary.
         '''
         raise NotImplementedError

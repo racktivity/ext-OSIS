@@ -83,6 +83,37 @@ class OsisClient(object):
                                               self.serializer.NAME)
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
 
+
+    def query(self, Query):
+        ''' run query from OSIS server
+	
+	@param query: Query to execute on OSIS server
+	@type query: string
+
+	@return: result of the query else raise error 
+	@type: List of rows. Each row shall be represented as a dictionary.
+	'''
+        
+	return self.transport.runQuery(Query)
+
+    def delete(self, guid, version=None):
+        '''Delete a root object with a given GUID from the OSIS server
+
+        If no version is specified, all the versions shall be deleted.
+        
+        @param guid: GUID of the root object to delete
+        @type guid: string
+        @param version: Version GUID of the object to delete
+        @type version: string
+
+        @return: True or False, according as the deletion succeeds or fails
+        '''
+        if not version:
+            return self.transport.delete(self._ROOTOBJECTTYPE.__name__, guid)
+        else:
+            return self.transport.delete_version(self._ROOTOBJECTTYPE.__name__,
+                                                 guid, version)
+
     def save(self, object_):
         '''Save a root object to the server
 

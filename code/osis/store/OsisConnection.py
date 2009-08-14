@@ -78,26 +78,33 @@ class OsisConnection(object):
         self._login = login
         
 
-    def objectExists(self, objType, guid):
+    def objectExists(self, objType, guid, version):
         """
         Checks if an instance of objType with the supplied guid exists
         
         @param objType : type of object to check
         @param guid : unique identifier 
+        @param version : unique version for the given guid
         """
         
-        return self.viewObjectExists(objType, 'main', guid)
+        return self.viewObjectExists(objType, 'main', guid, version)
     
-    def viewObjectExists(self, objType, viewName, guid):
+    def viewObjectExists(self, objType, viewName, guid, version):
         """
         Checks if an instance of objType with the supplied guid exists
         
         @param objType : type of object to check
         @param viewName : view whixh contains the object
         @param guid : unique identifier 
+        @param version : unique version for the given guid
         """
-        q.logger.log("select * from only %s.main where guid='%s'"%(objType, guid) ,5)
-        result = self._dbConn.sqlexecute("select * from only %s.%s where guid='%s'"%(objType, viewName, guid)).dictresult()
+        if not version:
+            q.logger.log("select * from only %s.%s where guid='%s'"%(objType, viewName, guid) ,5)
+            result = self._dbConn.sqlexecute("select * from only %s.%s where guid='%s'"%(objType, viewName, guid)).dictresult()
+        else:
+            q.logger.log("select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version) ,5)
+            result = self._dbConn.sqlexecute("select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version)).dictresult()
+
         if result:
             return result[0] > 0
         return False
@@ -124,19 +131,45 @@ class OsisConnection(object):
         else:
             result =  result[0]['data'][1:-1]
             return result.decode('hex')
-    
-    def objectDelete(self, objType, guid):
+
+
+    def runQuery(self,query):
+        '''Run query from OSIS server
+        
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error 
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+	result = self._dbConn.sqlexecute(query).dictresult()
+	if not result:
+        	q.eventhandler.raiseCriticalError('Query:%s  Error in OSIS server.' %query)
+	else:
+		return result
+
+
+
+
+    def objectDelete(self, objType, guid, version):
         """
         Delete an instance of objType with the supplied guid
         
         @param objType : type of object to check
         @param guid : unique identifier 
-        """        
-        if(self.objectExists(objType, guid)):
-            self._dbConn.sqlexecute("delete from only %s.main where guid='%s'"%(objType,guid))   
+        @param version : unique version for the given guid
+        """   
+        if(self.objectExists(objType, guid, version)):
+            if not version:
+                self._dbConn.sqlexecute("delete from %s.main where guid='%s'"%(objType,guid))   
+            else:
+                self._dbConn.sqlexecute("delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version))   
             return True
         else:
-            q.eventhandler.raiseCriticalError('%s with guid %s not found.'%(objType, guid))
+            if not version:
+                q.eventhandler.raiseCriticalError('%s with guid %s not found.'%(objType, guid))
+            else:
+                q.eventhandler.raiseCriticalError('%s with guid %s and version %s not found.'%(objType, guid, version))
         
     def objectSave(self,data):
         """
@@ -145,7 +178,7 @@ class OsisConnection(object):
         @param objType : type of object to check
         @param guid : unique identifier 
         """        
-        if not self.objectExists(data.__class__.__name__, data.guid):
+        if not self.objectExists(data.__class__.__name__, data.guid, None):
             return self._createObject(data)
         else:
             return self._updateObject(data)   
@@ -308,22 +341,22 @@ class OsisConnection(object):
         self._dbConn.sqlexecute('DROP TABLE %s.%s CASCADE'%(objType, viewName))
         return True
     
-    def viewDelete(self, objType, viewName, viewguid, versionguid=None):
+    def viewDelete(self, objType, viewName, guid, versionguid=None):
         """
-        Removes the row with the supplied viewguid from the view
+        Removes row(s) with the supplied guid from the view
         
         @param objType : the object Type name
         @param viewName : the view from which to remove a row
-        @param viewguid : unique identifier for the object
+        @param viewguid : unique identifier (GUID) for the object
         @param versionguid : unique identifier indicating the version of the object. (Optional)
                              If specified, only the mentioned version will be removed, 
                              If ommited, all versions will be removed !
         """      
         
         if not versionguid:
-            self._dbConn.sqlexecute("delete from %s.%s where guid='%s'"%(objType, viewName, viewguid))   
+            self._dbConn.sqlexecute("delete from %s.%s where guid='%s'"%(objType, viewName, guid))   
         else:
-            self._dbConn.sqlexecute("delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, viewguid, versionguid))   
+            self._dbConn.sqlexecute("delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, guid, versionguid))   
             
         return True
             

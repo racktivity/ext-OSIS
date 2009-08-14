@@ -112,6 +112,75 @@ class OsisServer(BaseServer):
         # Encode serialized object using Base64
         return base64.encodestring(data)
 
+
+    @q.manage.applicationserver.expose
+    def runQuery(self, query):
+        '''Run query from OSIS server
+        
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error 
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+
+	# Set up tasklet call parameters
+    	params = {'query': query}
+    	self.tasklet_engine.execute(params=params, tags=('osis', 'query')) 
+	return  params['result']
+
+
+    @q.manage.applicationserver.expose
+    def delete(self, objectType, guid):
+        '''Delete an object from the OSIS object store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param guid: GUID of the object to delete
+        @type guid: string
+
+        @return: True or False, according as deletion succeeds or fails.
+        '''
+        # Set up tasklet call parameters
+        params = {
+             'rootobjectguid': guid,
+             'rootobjecttype': objectType,
+             'rootobjectversionguid': None
+        }
+         
+        logger.debug('[DELETE] Executing \'delete\' taklets for %s guid: %s' % \
+                     (objectType, guid))
+        self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
+ 
+        return params['result']
+  
+
+    @q.manage.applicationserver.expose
+    def delete_version(self, objectType, guid, version):
+        '''Delete a specific version of an object from the OSIS object store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param guid: GUID of the object to delete
+        @type guid: string
+        @param version: Version GUID of the object to delete
+        @type version: string
+
+        @return: True or False, according as deletion succeeds or fails.
+        '''
+        # Set up tasklet call parameters
+        params = {
+            'rootobjectguid': guid,
+            'rootobjecttype': objectType,
+            'rootobjectversionguid': version
+        }
+  
+        logger.debug('[DELETE] Executing \'delete\' taklets for %s guid: %s ; version: %s' % \
+                     (objectType, guid,version))
+        self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
+        
+        return params['result']
+
     @q.manage.applicationserver.expose
     def put(self, objectType, data, serializer):
         '''Save an object in the OSIS object store

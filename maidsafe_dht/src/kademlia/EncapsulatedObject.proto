@@ -1,7 +1,0 @@
-package kad;
-
-message EncapsulatedObject {
-  required bytes  data = 1;
-  required uint32 last_published_time = 2 ; 
-  required uint32 original_published_time = 3;
-}
