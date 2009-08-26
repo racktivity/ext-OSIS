@@ -1,24 +1,24 @@
 # <License type="Aserver BSD" version="2.0">
-# 
+#
 # Copyright (c) 2005-2009, Aserver NV.
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
-# 
+#
 # * Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # * Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # * Neither the name Aserver nor the names of other contributors
 #   may be used to endorse or promote products derived from this
 #   software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY ASERVER "AS IS" AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -30,7 +30,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # </License>
 
 '''OSIS client implementation'''
@@ -64,7 +64,7 @@ class OsisClient(object):
         '''Retrieve a root object with a given GUID from the OSIS server
 
         If no version is specified, the latest version is retrieved.
-        
+
         @param guid: GUID of the root object to retrieve
         @type guid: string
         @param version: Version GUID of the object to retrieve
@@ -86,21 +86,21 @@ class OsisClient(object):
 
     def query(self, Query):
         ''' run query from OSIS server
-	
+
 	@param query: Query to execute on OSIS server
 	@type query: string
 
-	@return: result of the query else raise error 
+	@return: result of the query else raise error
 	@type: List of rows. Each row shall be represented as a dictionary.
 	'''
-        
+
 	return self.transport.runQuery(Query)
 
     def delete(self, guid, version=None):
         '''Delete a root object with a given GUID from the OSIS server
 
         If no version is specified, all the versions shall be deleted.
-        
+
         @param guid: GUID of the root object to delete
         @type guid: string
         @param version: Version GUID of the object to delete
@@ -174,6 +174,21 @@ class OsisClient(object):
         else:
             return ViewResultList(result)
 
+    def findAsView(self, filter_, viewName):
+	"""
+	Perform a find/filter operation.
+	@param filter_: Filter description
+        @type filter_: OsisFilterObject
+        @param view: name of the view to return
+        @type view: string
+
+	@return: list of dicts representing the view{col: value}
+	"""
+	type_ = self._ROOTOBJECTTYPE.__name__
+
+        result = self.transport.findAsView(type_, filter_, viewName)
+
+        return result
 
 class OsisConnection(object):
     '''Connection to an OSIS server

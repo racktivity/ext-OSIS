@@ -1,24 +1,24 @@
 # <License type="Aserver BSD" version="2.0">
-# 
+#
 # Copyright (c) 2005-2009, Aserver NV.
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
-# 
+#
 # * Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # * Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # * Neither the name Aserver nor the names of other contributors
 #   may be used to endorse or promote products derived from this
 #   software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY ASERVER "AS IS" AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -30,7 +30,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # </License>
 
 #pylint: disable-msg=C0103, R0201
@@ -116,18 +116,21 @@ class OsisServer(BaseServer):
     @q.manage.applicationserver.expose
     def runQuery(self, query):
         '''Run query from OSIS server
-        
+
         @param query: Query to execute on OSIS server
         @type query: string
 
-        @return: result of the query else raise error 
+        @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
 
 	# Set up tasklet call parameters
     	params = {'query': query}
-    	self.tasklet_engine.execute(params=params, tags=('osis', 'query')) 
-	return  params['result']
+    	self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
+	if not 'result' in params or not params['result']:
+            return False
+
+        return params['result']
 
 
     @q.manage.applicationserver.expose
@@ -147,13 +150,16 @@ class OsisServer(BaseServer):
              'rootobjecttype': objectType,
              'rootobjectversionguid': None
         }
-         
+
         logger.debug('[DELETE] Executing \'delete\' taklets for %s guid: %s' % \
                      (objectType, guid))
         self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
- 
+
+        if not 'result' in params or not params['result']:
+            return False
+
         return params['result']
-  
+
 
     @q.manage.applicationserver.expose
     def delete_version(self, objectType, guid, version):
@@ -174,11 +180,15 @@ class OsisServer(BaseServer):
             'rootobjecttype': objectType,
             'rootobjectversionguid': version
         }
-  
+
         logger.debug('[DELETE] Executing \'delete\' taklets for %s guid: %s ; version: %s' % \
                      (objectType, guid,version))
         self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
-        
+
+
+        if not 'result' in params or not params['result']:
+            return False
+
         return params['result']
 
     @q.manage.applicationserver.expose
@@ -206,6 +216,15 @@ class OsisServer(BaseServer):
         """
         return BaseServer.find(self, objectType, filters, view)
 
+
+    @q.manage.applicationserver.expose
+    def findAsView(self, objectType, filters, view=''):
+        """
+        @param objectType: type of the object
+        @param filters: filters. list of dicts
+        @param view: view to return
+        """
+        return BaseServer.findAsView(self, objectType, filters, view)
 
     #pylint: disable-msg=W0613
     def get_object_from_store(self, object_type, guid, preferred_serializer,
@@ -252,7 +271,6 @@ class OsisServer(BaseServer):
 
         return params['rootobject'], None
 
-
     def put_object_in_store(self, object_type, object_):
         '''Store an object in the store
 
@@ -271,6 +289,32 @@ class OsisServer(BaseServer):
                         (object_type, object_.guid))
         self.tasklet_engine.execute(params=params, tags=('osis', 'store',))
 
+
+    def execute_filter_as_view(self, object_type, filter_, view):
+	'''Execute a query on the store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param filter_: Filter to execute
+        @type filter_: L{Filter}
+        @param view: view name to return
+        @type view: string
+
+        @return: OSISList formatted resultset
+        @rtype: tuple
+        '''
+	params = {
+            'rootobjecttype': object_type,
+            'filterobject': filter_,
+            'osisview': view,
+        }
+
+        self.tasklet_engine.execute(params=params, tags=('osis','findasview'))
+
+        if not 'result' in params:
+            return False
+
+        return params['result'] if params['result'] else False
 
     def execute_filter(self, object_type, filter_, view):
         '''Execute a query on the store
@@ -294,6 +338,6 @@ class OsisServer(BaseServer):
         self.tasklet_engine.execute(params=params, tags=('osis','findobject'))
 
         if not 'result' in params:
-            return None
+            return False
 
-        return params['result']
+        return params['result'] if params['result'] else False

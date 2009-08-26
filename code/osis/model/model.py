@@ -15,9 +15,9 @@ CreationDateField.name = 'creationdate'
 DEFAULT_FIELDS = (GUIDField, VersionField, CreationDateField, )
 
 class _OsisModelAttribute(object):
-        def __init__(self, name, attribute):
-            self.name = name
-            self.attribute = attribute
+    def __init__(self, name, attribute):
+        self.name = name
+        self.attribute = attribute
 
 class _OsisModelInfo(object):
     def __init__(self, name, attrs):

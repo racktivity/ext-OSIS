@@ -214,14 +214,36 @@ class BaseServer(object):
 
         if not result:
             logger.debug('[FIND] No results found')
-            return (tuple(), tuple())
+            return []
 
         # Commenting this line temporarily because "result[1]" leads
         # to a crash if 'result' is a simple list of guids and contains
-        # a single entry. Need to break this function into two, one 
+        # a single entry. Need to break this function into two, one
         # expecting a 'view' argument, and another not.
         #logger.debug('[FIND] %d results found' % len(result[1]))
         return result
+
+    def findAsView(self, object_type, filters, view):
+        '''Execute a find (query) operation on the store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param filters: List of query filters
+        @type filters: list
+        @param view: name of view to return
+        @type view: string
+        '''
+        if object_type not in ROOTOBJECT_TYPES:
+            raise UnknownObjectTypeException('Unknown object type %s' % \
+                                             object_type)
+
+        filter_ = Filter()
+        filter_.filters = filters
+
+        result = self.execute_filter_as_view(object_type, filter_, view)
+
+        return result
+
 
     # Abstract methods
     def get_object_from_store(self, object_type, guid, preferred_serializer,
@@ -277,13 +299,28 @@ class BaseServer(object):
         '''
         raise NotImplementedError
 
+    def execute_filter_as_view(self, object_type, filter_, view):
+        '''Execute a query on the store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param filter_: Filter to execute
+        @type filter_: L{Filter}
+        @param view: view name to return
+        @type view: string
+
+        @return: OSISList formatted resultset
+        @rtype: tuple
+        '''
+        raise NotImplementedError
+
     def runQuery(self, query):
         '''Run query from OSIS server
-        
+
         @param query: Query to execute on OSIS server
         @type query: string
 
-        @return: result of the query else raise error 
+        @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
         raise NotImplementedError
