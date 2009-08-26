@@ -83,7 +83,6 @@ class GUID(String):
 class Boolean(Field, ExposedField):
     VALID_TYPE = bool
 
-
 class EmptyObject: pass
 
 def _ObjectHelper(type_):
@@ -160,6 +159,17 @@ class Enumeration(String):
             except AttributeError:
                 pass
 
+
+class DateTime(Float):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def __set__(self, obj, value):
+        from datetime import datetime as dttime
+        if not isinstance(value, dttime) and value is not None:
+            raise TypeError('Only objects of type Datetime can be assigned to this field')
+
+        obj._osis_store[self.name] = value
 
 class Container(Field):
     pass

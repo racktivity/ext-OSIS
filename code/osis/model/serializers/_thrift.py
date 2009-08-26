@@ -56,6 +56,9 @@ import osis.model
 
 TYPE_SPEC_CACHE = dict()
 
+class LocTType:
+    DATETIME=TType.DOUBLE
+
 def struct_args(attr):
     return (attr.type_, generate_thrift_spec(attr.type_.OSIS_MODEL_INFO))
 
@@ -69,6 +72,7 @@ def list_args(attr):
             FIELD_TYPE_ATTR_ARGS_MAP[type(attr.type_)](attr.type_))
 
 
+
 FIELD_TYPE_ATTR_ARGS_MAP = {
     osis.model.GUID: lambda o: None,
     osis.model.String: lambda o: None,
@@ -79,6 +83,7 @@ FIELD_TYPE_ATTR_ARGS_MAP = {
     osis.model.Dict: dict_args,
     osis.model.List: list_args,
     osis.model.Enumeration: lambda o: None,
+    osis.model.DateTime:lambda o: None,
 }
 
 FIELD_TYPE_THRIFT_TYPE_MAP = {
@@ -91,6 +96,7 @@ FIELD_TYPE_THRIFT_TYPE_MAP = {
     osis.model.Dict: lambda o: TType.MAP,
     osis.model.List: lambda o: TType.LIST,
     osis.model.Enumeration: lambda o: TType.STRING,
+    osis.model.DateTime:lambda o: LocTType.DATETIME,
 }
 
 def generate_thrift_spec(typeinfo):
@@ -102,7 +108,7 @@ def generate_thrift_spec(typeinfo):
     logger.info('Generating thrift spec for %s' % typeinfo.name)
 
     spec = [None, ]
-    id_ = len(spec)
+    id_ = len(spec)	
 
     def get_thrift_id(field):
         if field.attribute in DEFAULT_FIELDS:
@@ -129,16 +135,13 @@ def generate_thrift_spec(typeinfo):
             id_ += 1
 
         assert len(spec) == aid
-
         args = FIELD_TYPE_ATTR_ARGS_MAP[type(attr)](attr)
         thrift_type = FIELD_TYPE_THRIFT_TYPE_MAP[type(attr)](attr)
-
         spec.append((aid, thrift_type, name, args, None, ))
 
         id_ = len(spec)
 
     ret = TYPE_SPEC_CACHE[typeinfo] = tuple(spec)
-
     return ret
 
 
@@ -152,7 +155,17 @@ WRITE_TYPE_HANDLERS = {
     TType.STRUCT: lambda data, prot, info: _write_struct(data, prot, info),
     TType.LIST: lambda data, prot, info: _write_list(data, prot, info),
     TType.MAP: lambda data, prot, info: _write_map(data, prot, info),
+    LocTType.DATETIME:lambda data,prot,info:_write_dateTime(data,prot,info),
 }
+
+def _write_dateTime(data,prot,info):
+    import time;
+    list=(data.year,data.month,data.day,data.hour,data.minute,data.second,data.microsecond)
+    data=list
+    prot.writeListBegin(TType.LIST, len(data))
+    for item in data:
+        prot.writeI32(item)
+    prot.writeListEnd()  
 
 def _write_map(data, prot, info):
     assert info[0] == TType.STRING, 'Only string keys supported'
@@ -191,7 +204,6 @@ def thrift_write(obj, spec, _force_native=False):
     transport = TTransport.TMemoryBuffer()
     protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
     transport.open()
-
     if protocol.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and \
        spec is not None and \
        fastbinary is not None and \
@@ -218,7 +230,18 @@ READ_TYPE_HANDLERS = {
     TType.STRUCT: lambda prot, info: _read_struct(prot, info),
     TType.LIST: lambda prot, info: _read_list(prot, info),
     TType.MAP: lambda prot, info: _read_map(prot, info),
+    LocTType.DATETIME: lambda prot,info: _read_datetime(prot,info),
 }
+
+def _read_datetime(prot,info):
+    obj = list()
+    type_, size = prot.readListBegin()
+    for i in xrange(size):
+        item =prot.readI32() 
+        obj.append(item)
+    prot.readListEnd()
+    import datetime
+    return datetime.datetime(obj[0],obj[1],obj[2],obj[3],obj[4],obj[5],obj[6])
 
 
 def _read_map(prot, info):
@@ -341,7 +364,7 @@ class ThriftObjectWrapper(object):
 
 class ThriftSerializer(object):
     NAME = 'thrift'
-    FORCE_NATIVE = False
+    FORCE_NATIVE = True
 
     @classmethod
     def serialize(cls, object_):
