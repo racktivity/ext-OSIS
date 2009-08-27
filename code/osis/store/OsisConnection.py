@@ -163,12 +163,9 @@ class OsisConnection(object):
         '''
 	result = self._dbConn.sqlexecute(query).dictresult()
 	if not result:
-        	q.eventhandler.raiseCriticalError('Query:%s  Error in OSIS server.' %query)
+	    q.eventhandler.raiseCriticalError('Query:%s  Error in OSIS server.' %query)
 	else:
-		return result
-
-
-
+	    return result
 
     def objectDelete(self, objType, guid, version):
         """
@@ -317,10 +314,12 @@ class OsisConnection(object):
 
         for item in filterobject.filters:
             view = item.keys()[0]
+	    columns = self._getColumns(objType, view)
             field = item.values()[0].keys()[0]
+	    fieldtype = [column[1] for column in columns if column[0] == field][0]
             fieldvalue = item.values()[0].values()[0]
             q.logger.log("Process Filter : (%s.%s = %s)"%(view, field, fieldvalue) ,3)
-            results = self._getFilterResults(objType, view, field , fieldvalue , results)
+            results = self._getFilterResults(objType, view, field , fieldvalue, fieldtype, results)
 	return results
 
     def objectsFindAsView(self, objType, filterObject, viewName):
@@ -434,15 +433,15 @@ class OsisConnection(object):
 	return pyValue
 	#return _OsisPGTypeConverter().convertToPg(pyType, pyValue)
 
-    def _generateSQLCondition(self, objType, view, field, value):
+    def _generateSQLCondition(self, objType, view, field, value, fieldtype):
         ret = ""
-        if q.basetype.integer.check(value):
-            ret = "%s.%s.%s = %s"%(objType,view,field,value)
-        else:
-            if q.basetype.float.check(value):
-                ret = "%s.%s.%s = %s"%(objType,view,field,value)
-            else:
-                ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
+	if fieldtype in  ('uuid', 'boolean'):
+	    ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
+	elif fieldtype == 'character varying':
+	    ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field,value)
+	else:
+	    if q.basetype.integer.check(value) or q.basetype.float.check(value):
+		ret = "%s.%s.%s = %s"%(objType,view,field,value)
         return ret
 
     def _getViewResultAsDict(self, objType, view, results):
@@ -470,6 +469,8 @@ class OsisConnection(object):
 
     def _getViewResults(self, objType, view, results):
 	columns = self._getColumns(objType, view)
+	coldef = list()
+
         for col in columns:
 	    coldef.append((col[0], osisPGTypeConverter.convertType(col[1])))
 
@@ -492,7 +493,6 @@ class OsisConnection(object):
            where table_name = '%s' and table_schema = '%s'
         """%(view, objType.lower())
 
-        coldef = list()
         columns = self._dbConn.sqlexecute(colList).getresult()
 	return columns
 
@@ -520,7 +520,7 @@ class OsisConnection(object):
         rawdata = self._dbConn.sqlexecute(sql).getresult()
 	return rawdata
 
-    def _getFilterResults(self, objType, view, filterField, filterValue, results):
+    def _getFilterResults(self, objType, view, filterField, filterValue, fieldType, results):
         #no results left to filter on
         if not results:
             return []
@@ -550,7 +550,7 @@ class OsisConnection(object):
                 'viewguid':viewguid,
                 'mainversion':mainversion,
                 'viewversion':viewversion,
-                'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue),
+                'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue, fieldType),
                 'guids':guids}
 
         rawdata = self._dbConn.sqlexecute(sql).dictresult()

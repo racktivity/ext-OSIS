@@ -311,10 +311,10 @@ class OsisServer(BaseServer):
 
         self.tasklet_engine.execute(params=params, tags=('osis','findasview'))
 
-        if not 'result' in params:
-            return False
+        if not 'result' in params or not params['result']:
+            return list()
 
-        return params['result'] if params['result'] else False
+        return params['result']
 
     def execute_filter(self, object_type, filter_, view):
         '''Execute a query on the store
@@ -337,7 +337,7 @@ class OsisServer(BaseServer):
 
         self.tasklet_engine.execute(params=params, tags=('osis','findobject'))
 
-        if not 'result' in params:
-            return False
+        if not 'result' in params or not params['result']:
+            return list()
 
-        return params['result'] if params['result'] else False
+        return params['result']

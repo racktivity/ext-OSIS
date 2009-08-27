@@ -198,8 +198,10 @@ def TypedList(type_):
             if not object_.__class__ == type_.VALID_TYPE:
                 raise TypeError('Only objects of type %s can be stored' % \
                                     type_.VALID_TYPE.__name__)
-            object_.guid = str(uuid.uuid4())
-            object_.version = str(uuid.uuid4())
+            if hasattr(object_, 'guid') and not object_.guid:
+                object_.guid = str(uuid.uuid4())
+            if hasattr(object_, 'version') and not object_.version:
+                object_.version = str(uuid.uuid4())
             self._list.append(object_)
 
         def __getitem__(self, index):
