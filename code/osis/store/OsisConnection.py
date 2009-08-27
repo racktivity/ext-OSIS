@@ -409,14 +409,6 @@ class OsisConnection(object):
         fieldnames = "guid, version, viewguid"
         values = "'%s', '%s', '%s'"%(guid, version, q.base.idgenerator.generateGUID())
 
-	#for column in columns:
-	    #columnName = column[0]
-	    #columnType = column[1]
-	    #value = fields.get(columnName)
-	    #fieldnames = "%s, %s"%(fieldnames, columnName)
-	    #checkedValue = self._checkValues(value, _OsisPGTypeConverter().convertType(columnType))
-	    #values += '%s, %s'%(values, "'%s'"%value if not checkedValue else checkedValue)
-
         for itemKey in fields.iterkeys():
             fieldnames = "%s, %s"%(fieldnames, itemKey)
             if fields[itemKey]:
@@ -425,8 +417,6 @@ class OsisConnection(object):
                 values = "%s, %s"%(values, self._generateSQLString(fields[itemKey]))
 
         sql = "insert into %s.%s (%s) VALUES (%s)"%(objType, viewName, fieldnames, values)
-	q.logger.log('********************************************',3)
-	q.logger.log(sql, 3)
         self._dbConn.sqlexecute(sql)
 
     def _generateSQLString(self, value):
@@ -469,7 +459,10 @@ class OsisConnection(object):
 	    for index in xrange(len(columnNames)):
 		columnName = columnNames[index][0]
 		columnType = columnNames[index][1]
-		resultDict[columnName] = _OsisPGTypeConverter().convertValue(columnType, data[index])
+		if not data[index] == None:
+		    resultDict[columnName] = _OsisPGTypeConverter().convertValue(columnType, data[index])
+		else:
+		    resultDict[columnName] = ''
 
 	    result.append(resultDict)
 
