@@ -218,7 +218,7 @@ class OsisServer(BaseServer):
 
 
     @q.manage.applicationserver.expose
-    def findAsView(self, objectType, filters, view=''):
+    def findAsView(self, objectType, filters, view):
         """
         @param objectType: type of the object
         @param filters: filters. list of dicts
