@@ -56,8 +56,10 @@ import osis.model
 
 TYPE_SPEC_CACHE = dict()
 
+# DATETIME type. Note that the value below needs to be modified keeping in mind the values ( for other types ) given in
+# 'thrift_python' q-package.( TType module ). The value below should not match any of the existing Thrift types.
 class LocTType:
-    DATETIME=TType.DOUBLE
+    DATETIME=19  
 
 def struct_args(attr):
     return (attr.type_, generate_thrift_spec(attr.type_.OSIS_MODEL_INFO))
