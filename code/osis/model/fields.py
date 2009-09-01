@@ -204,6 +204,10 @@ def TypedList(type_):
                 object_.version = str(uuid.uuid4())
             self._list.append(object_)
 
+        def remove(self, object_):
+            if object_ in self._list:
+                self._list.remove(object_)
+
         def __getitem__(self, index):
             return self._list[index]
 
