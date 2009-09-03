@@ -1,24 +1,24 @@
 # <License type="Aserver BSD" version="2.0">
-# 
+#
 # Copyright (c) 2005-2009, Aserver NV.
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or
 # without modification, are permitted provided that the following
 # conditions are met:
-# 
+#
 # * Redistributions of source code must retain the above copyright
 #   notice, this list of conditions and the following disclaimer.
-# 
+#
 # * Redistributions in binary form must reproduce the above copyright
 #   notice, this list of conditions and the following disclaimer in
 #   the documentation and/or other materials provided with the
 #   distribution.
-# 
+#
 # * Neither the name Aserver nor the names of other contributors
 #   may be used to endorse or promote products derived from this
 #   software without specific prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY ASERVER "AS IS" AND ANY EXPRESS OR
 # IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -30,7 +30,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
+#
 # </License>
 
 import logging
@@ -59,7 +59,7 @@ TYPE_SPEC_CACHE = dict()
 # DATETIME type. Note that the value below needs to be modified keeping in mind the values ( for other types ) given in
 # 'thrift_python' q-package.( TType module ). The value below should not match any of the existing Thrift types.
 class LocTType:
-    DATETIME=19  
+    DATETIME=19
 
 def struct_args(attr):
     return (attr.type_, generate_thrift_spec(attr.type_.OSIS_MODEL_INFO))
@@ -110,7 +110,7 @@ def generate_thrift_spec(typeinfo):
     logger.info('Generating thrift spec for %s' % typeinfo.name)
 
     spec = [None, ]
-    id_ = len(spec)	
+    id_ = len(spec)
 
     def get_thrift_id(field):
         if field.attribute in DEFAULT_FIELDS:
@@ -167,7 +167,7 @@ def _write_dateTime(data,prot,info):
     prot.writeListBegin(TType.LIST, len(data))
     for item in data:
         prot.writeI32(item)
-    prot.writeListEnd()  
+    prot.writeListEnd()
 
 def _write_map(data, prot, info):
     assert info[0] == TType.STRING, 'Only string keys supported'
@@ -193,7 +193,7 @@ def _write_struct(data, prot, info):
     for field in (f for f in info if f):
         fid, ftype, fname, finfo, fdefault = field
         value = getattr(data, fname)
-        if not value and value is not False:
+        if not value and value is not False and not value == 0:
             continue
         prot.writeFieldBegin(fname, ftype, fid)
         WRITE_TYPE_HANDLERS[ftype](value, prot, finfo)
@@ -239,7 +239,7 @@ def _read_datetime(prot,info):
     obj = list()
     type_, size = prot.readListBegin()
     for i in xrange(size):
-        item =prot.readI32() 
+        item =prot.readI32()
         obj.append(item)
     prot.readListEnd()
     import datetime

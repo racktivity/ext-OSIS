@@ -218,9 +218,13 @@ def TypedList(type_):
             return self._list.__len__()
 
         def __eq__(self, other):
+            if other == None:
+                return False
             return self._list.__eq__(other._list)
 
         def __ne__(self, other):
+            if other == None:
+                return True
             return self._list.__ne__(other._list)
 
         def __str__(self):
@@ -294,9 +298,13 @@ def TypedDict(type_):
             return self._dict.keys()
 
         def __eq__(self, other):
+            if other ==None:
+                return False
             return self._dict.__eq__(other._dict)
 
         def __ne__(self, other):
+            if other ==None:
+                return True
             return self._dict.__ne__(other._dict)
 
         def __str__(self):
