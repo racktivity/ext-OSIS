@@ -44,6 +44,7 @@ from OsisView import OsisView, OsisColumn, OsisType
 from OsisFilterObject import OsisFilterObject
 
 from osis.model.serializers import ThriftSerializer
+from pg import ProgrammingError
 
 class _OsisPGTypeConverter(object):
     def __init__(self):
@@ -152,7 +153,7 @@ class OsisConnection(object):
             return result.decode('hex')
 
 
-    def runQuery(self,query):
+    def runQuery(self, query):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -161,11 +162,10 @@ class OsisConnection(object):
         @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
-	result = self._dbConn.sqlexecute(query).dictresult()
-	if not result:
-	    q.eventhandler.raiseCriticalError('Query:%s  Error in OSIS server.' %query)
-	else:
-	    return result
+	try:
+	    return self._dbConn.sqlexecute(query).dictresult()
+	except ProgrammingError,ex:
+	    raise RuntimeError('Failed to execute query %s. %s'%(query, ex))
 
     def objectDelete(self, objType, guid, version):
         """
