@@ -51,7 +51,7 @@ class XMLRPCTransport(object):
         @param service_name: Name of the service endpoint (if applicable)
         @type service_name: string
         '''
-        self.proxy = xmlrpclib.ServerProxy(uri)
+        self.proxy = xmlrpclib.ServerProxy(uri,allow_none=True)
 
         if service_name:
             self.proxy = getattr(self.proxy, service_name)
