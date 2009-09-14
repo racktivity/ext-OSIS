@@ -45,6 +45,19 @@ from OsisFilterObject import OsisFilterObject
 
 from osis.model.serializers import ThriftSerializer
 from pg import ProgrammingError
+import exceptions
+import traceback
+
+class OsisException(exceptions.Exception):
+    def __init__(self, command, msg):
+        msg = self.handleException(command, msg)
+        self.errmsg = msg
+        self.args = (msg,)
+
+    def handleException(self, command, msg):
+	errorMsg = 'Exception occurred while executing \"%s\".\n'%command
+	errorMsg += traceback.format_exc()
+	return errorMsg
 
 class _OsisPGTypeConverter(object):
     def __init__(self):
@@ -168,7 +181,7 @@ class OsisConnection(object):
 		return result.dictresult()
 	    return dict()
 	except ProgrammingError,ex:
-	    raise RuntimeError('Failed to execute query %s. %s'%(query, ex))
+	    raise OsisException(query, ex)
 
     def objectDelete(self, objType, guid, version):
         """
@@ -270,8 +283,11 @@ class OsisConnection(object):
 
         obj = data.serialize(ThriftSerializer)
         obj = obj.encode('hex')
-        q.logger.log("insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj) ,5)
-        self._dbConn.sqlexecute("insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj))
+	query = "insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj)
+	try:
+	    self._dbConn.sqlexecute(query)
+	except ProgrammingError, ex:
+	    raise OsisException(query, ex)
         return data
 
     def _updateObject(self, data):
@@ -283,8 +299,11 @@ class OsisConnection(object):
         data.creationdate = time.strftime('%Y-%m-%d %H:%M', time.localtime())
         obj = data.serialize(ThriftSerializer)
         obj = obj.encode('hex')
-        q.logger.log("update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}') where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid) ,5)
-        self._dbConn.sqlexecute("update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid))
+	query = "update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid)
+	try:
+	    self._dbConn.sqlexecute(query)
+	except ProgrammingError, ex:
+	    raise OsisException(query, ex)
         return data
 
     def objectsFind(self, objType, filterobject, viewToReturn=None):
@@ -419,7 +438,10 @@ class OsisConnection(object):
                 values = "%s, %s"%(values, self._generateSQLString(fields[itemKey]))
 
         sql = "insert into %s.%s (%s) VALUES (%s)"%(objType, viewName, fieldnames, values)
-        self._dbConn.sqlexecute(sql)
+	try:
+	    self._dbConn.sqlexecute(sql)
+	except ProgrammingError, ex:
+	    raise OsisException(sql, ex)
 
     def _generateSQLString(self, value):
 	if value == None:
