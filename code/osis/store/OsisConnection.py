@@ -163,7 +163,10 @@ class OsisConnection(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
 	try:
-	    return self._dbConn.sqlexecute(query).dictresult()
+	    result= self._dbConn.sqlexecute(query)
+	    if result:
+		return result.dictresult()
+	    return dict()
 	except ProgrammingError,ex:
 	    raise RuntimeError('Failed to execute query %s. %s'%(query, ex))
 
