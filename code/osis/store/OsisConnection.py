@@ -433,7 +433,10 @@ class OsisConnection(object):
         for itemKey in fields.iterkeys():
             fieldnames = "%s, %s"%(fieldnames, itemKey)
             if fields[itemKey]:
-                values = "%s, '%s'"%(values, fields[itemKey])
+                if type(fields[itemKey]) is str:
+                    values = "%s, '%s'"%(values,  self._escape(fields[itemKey]))
+                else:
+                    values = "%s, '%s'"%(values,  fields[itemKey])
             else:
                 values = "%s, %s"%(values, self._generateSQLString(fields[itemKey]))
 
@@ -450,7 +453,7 @@ class OsisConnection(object):
             return value
         if q.basetype.float.check(value):
             return value
-        return "'%s'"%value
+        return "'%s'"% value
 
     def _checkValues(self, pyValue):
 	if pyValue == None:
@@ -463,7 +466,7 @@ class OsisConnection(object):
 	if fieldtype in  ('uuid', 'boolean'):
 	    ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
 	elif fieldtype == 'character varying':
-	    ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field,value)
+	    ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field, self._escape(value))
 	else:
 	    if q.basetype.integer.check(value) or q.basetype.float.check(value):
 		ret = "%s.%s.%s = %s"%(objType,view,field,value)
@@ -583,6 +586,10 @@ class OsisConnection(object):
             guidList.append(row['guid'])
 
         return guidList
+
+    def _escape(self, pgstr):
+        pgstr = pgstr.replace("'", "\\'")
+        return pgstr
 
 
 
