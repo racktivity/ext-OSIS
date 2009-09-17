@@ -37,6 +37,8 @@ import yaml
 
 import osis.model
 from osis.model.fields import EmptyObject
+from pymonkey.baseclasses.BaseEnumeration import BaseEnumeration
+
 
 def handle_list(attr, value):
     data = list()
@@ -54,9 +56,16 @@ def handle_dict(attr, value):
 
     return data
 
+
+def enum_to_string(obj):
+    if isinstance(obj, BaseEnumeration):
+        #TODO Get rid of protected lookup
+        return getattr(obj, '_pm_enumeration_name')
+
+
 TYPE_HANDLERS = {
     osis.model.String: lambda a, o: o,
-    osis.model.Enumeration: lambda a, o: o,
+    osis.model.Enumeration: lambda a, o: enum_to_string(o),
     osis.model.GUID: lambda a, o: o,
     osis.model.Integer: lambda a, o: o,
     osis.model.Float: lambda a, o: o,
@@ -65,6 +74,7 @@ TYPE_HANDLERS = {
     osis.model.Dict: handle_dict,
     osis.model.Object: lambda a, o: object_to_dict(o),
 }
+
 
 def object_to_dict(object_):
     if isinstance(object_, EmptyObject):
