@@ -136,29 +136,22 @@ class Enumeration(String):
         except AttributeError:
             return None
 
-        if value is None:
+        if value in (None,''):
             return None
 
         return self.type_.getByName(value)
 
     def __set__(self, obj, value):
-        if value is not None:
-            if not isinstance(value, basestring):
-                if not isinstance(value, self.type_) and value is not None:
-                    raise TypeError(
-                        'Only objects of type %s can be assigned '
-                        'to this field' % str(self.VALID_TYPE))
+        if not isinstance(value, basestring):
+            if not isinstance(value, self.type_) and value is not None:
+                raise TypeError(
+                    'Only objects of type %s can be assigned '
+                    'to this field' % str(self.VALID_TYPE))
 
-                # TODO Get rid of this protected-access
-                value = getattr(value, '_pm_enumeration_name')
+            value = str(value) if value else None
 
-            String.__set__(self, obj, value)
-        else:
-            try:
-                String.__delete__(self, obj)
-            except AttributeError:
-                pass
 
+        String.__set__(self, obj, value)
 
 class DateTime(Float):
     def __init__(self, **kwargs):
