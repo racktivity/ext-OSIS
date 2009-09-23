@@ -184,7 +184,23 @@ class BaseServer(object):
         logger.debug('[PUT] Object %s %s stored' % \
                      (object_type, object_.guid))
 
-    def find(self, object_type, filters, view=None):
+    def search(self, object_type, filters, view=None):
+        '''Execute a find (query) operation on the store
+
+        @param object_type: Object type name
+        @type object_type: string
+        @param filters: List of query filters
+        @type filters: list
+        @param view: Optional name of view to return
+        @type view: string
+
+        @return: OSISList-formatted result table
+        @rtype: list
+        '''
+        # Even if '' is passed, we want none
+        raise NotImplementedError
+
+    def find(self, object_type, filters, view):
         '''Execute a find (query) operation on the store
 
         @param object_type: Object type name
@@ -216,12 +232,9 @@ class BaseServer(object):
             logger.debug('[FIND] No results found')
             return (tuple(), tuple())
 
-        # Commenting this line temporarily because "result[1]" leads
-        # to a crash if 'result' is a simple list of guids and contains
-        # a single entry. Need to break this function into two, one 
-        # expecting a 'view' argument, and another not.
-        #logger.debug('[FIND] %d results found' % len(result[1]))
+        logger.debug('[FIND] %d results found' % len(result[1]))
         return result
+
 
     # Abstract methods
     def get_object_from_store(self, object_type, guid, preferred_serializer,

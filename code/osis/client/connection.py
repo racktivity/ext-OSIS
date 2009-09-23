@@ -37,7 +37,9 @@
 
 import uuid
 import logging
-
+import urllib
+import time
+from osis.store.OsisDB import OsisDB
 from osis.client.view import ViewResultList
 from osis.store.OsisFilterObject import OsisFilterObject
 
@@ -56,9 +58,13 @@ class OsisClient(object):
         @type transport: object
         @param serializer: Object serializer implementation
         @type serializer: object
+        @applicationServerIp: osis server ip
+        @restPort: port at which osis server listening
         '''
         self.transport = transport
         self.serializer = serializer
+        #~ self.Ip=applicationServerIp
+        #~ self.port=restPort
 
     def get(self, guid, version=None):
         '''Retrieve a root object with a given GUID from the OSIS server
@@ -83,37 +89,6 @@ class OsisClient(object):
                                               self.serializer.NAME)
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
 
-
-    def query(self, Query):
-        ''' run query from OSIS server
-	
-	@param query: Query to execute on OSIS server
-	@type query: string
-
-	@return: result of the query else raise error 
-	@type: List of rows. Each row shall be represented as a dictionary.
-	'''
-        
-	return self.transport.runQuery(Query)
-
-    def delete(self, guid, version=None):
-        '''Delete a root object with a given GUID from the OSIS server
-
-        If no version is specified, all the versions shall be deleted.
-        
-        @param guid: GUID of the root object to delete
-        @type guid: string
-        @param version: Version GUID of the object to delete
-        @type version: string
-
-        @return: True or False, according as the deletion succeeds or fails
-        '''
-        if not version:
-            return self.transport.delete(self._ROOTOBJECTTYPE.__name__, guid)
-        else:
-            return self.transport.delete_version(self._ROOTOBJECTTYPE.__name__,
-                                                 guid, version)
-
     def save(self, object_):
         '''Save a root object to the server
 
@@ -135,7 +110,23 @@ class OsisClient(object):
         object_.version = str(uuid.uuid4())
 
         data = object_.serialize(self.serializer)
-        return self.transport.put(type_, data, self.serializer.NAME)
+        data=data.encode('hex')
+        ip,port=OsisDB().getApplicationServerIpandPort('main')
+
+        #return self.transport.put(type_, data, self.serializer.NAME)
+        commandstr="http://%s:%s/osis_service/put?objectType=%s&data=%s&serializer=%s"%(ip,port,type_,data,self.serializer.NAME)
+        #logger.info('Sending request to server=%s' % commandstr)
+        ret=urllib.urlopen(commandstr).read()
+        return ret
+
+    def  delete(self,guid,version=None):
+        if not version:
+          return  self.transport.delete(self._ROOTOBJECTTYPE.__name__,guid)
+        else:
+            return self.transport.delete_version(self._ROOTOBJECTTYPE.__name__,guid, version)
+
+        
+
 
     def new(self, *args, **kwargs): #pylint: disable-msg=W0142
         '''Create a new instance of the root object type
@@ -150,7 +141,8 @@ class OsisClient(object):
         '''Create a new filter object instance'''
         return OsisFilterObject()
 
-    def find(self, filter_, view=None):
+
+    def search(self, query_string):
         '''Perform a find/filter operation
 
         If no view name is specified, a list of GUIDs of the matching root
@@ -163,6 +155,25 @@ class OsisClient(object):
 
         @return: List of GUIDs or view result
         @rtype: tuple<string> or L{ViewResultList}
+        '''
+        #pylint: disable-msg=E1101
+        type_ = self._ROOTOBJECTTYPE.__name__
+
+        result = self.transport.search(type_, query_string )
+        return result
+
+    def find(self, filter_, view):
+        '''Perform a find/filter operation
+
+        a L{ViewResultList} is returned.
+
+        @param filter_: Filter description
+        @type filter_: OsisFilterObject
+        @param view: View to return
+        @type view: string
+
+        @return: view result
+        @rtype: L{ViewResultList}
         '''
         #pylint: disable-msg=E1101
         type_ = self._ROOTOBJECTTYPE.__name__

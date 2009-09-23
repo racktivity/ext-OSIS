@@ -138,7 +138,8 @@ def generate_thrift_spec(typeinfo):
         id_ = len(spec)
 
     ret = TYPE_SPEC_CACHE[typeinfo] = tuple(spec)
-
+    
+    logger.info('Generated thrift spec %s' % str(ret))
     return ret
 
 

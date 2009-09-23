@@ -31,8 +31,14 @@ class _OsisModelInfo(object):
         self.attributes = tuple(_OsisModelAttribute(*info) for info in
                 attrs.iteritems() if isinstance(info[1], Field))
 
+
     def __str__(self):
         return 'OSIS model info for %s' % self.name
+
+
+    def get_name(self):
+        return self.name
+
 
 
 class ModelMeta(type):

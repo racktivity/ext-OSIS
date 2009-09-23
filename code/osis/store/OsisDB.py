@@ -39,10 +39,11 @@ from pymonkey import q
 from pymonkey.baseclasses.ManagementApplication import ManagementApplication
 from pymonkey.db.DBConnection import DBConnection
 from OsisConnection import OsisConnection
+import time
 
 class OsisDB(object):
     
-    def addConnection(self, name, ip, database, login, passwd):
+    def addConnection(self, name, ip, database, login, passwd,restPort=8889,port_to_connect=5000,port_to_start=8000):
         """
         Add an Osis connection to the configuration
         
@@ -65,6 +66,9 @@ class OsisDB(object):
         ini.addParam(name,'database',database)
         ini.addParam(name,'login', login)
         ini.addParam(name,'passwd', passwd)
+        ini.addParam(name,'port_to_connect', port_to_connect)
+        ini.addParam(name,'port_to_start', port_to_start)
+        ini.addParam(name,"restport",restPort)
         
         ini.write()
 
@@ -86,7 +90,7 @@ class OsisDB(object):
             else:
                 ini.removeSection(name)
                 
-    def getConnection(self, name):
+    def getConnection(self, name,isView=True):
         """
         Create an Osis connection
         
@@ -104,7 +108,19 @@ class OsisDB(object):
         database = ini.getValue(name,'database')
         login = ini.getValue(name,'login')
         passwd = ini.getValue(name,'passwd')
-        osisConn.connect(ip, database, login, passwd)
+        port_to_connect = ini.getValue(name,'port_to_connect')
+        port_to_start = ini.getValue(name,'port_to_start')
+        osisConn.connect(ip, database, login, passwd,isView,port_to_connect,port_to_start)
         return osisConn
-        
-    
+
+    def getApplicationServerIpandPort(self,name):
+
+        iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
+        if not q.system.fs.exists(iniFile):
+            q.logger.log("config file not found",3)
+            q.eventhandler.raiseCriticalError('Configuration file not found. Please configure the connection.')
+        else:
+            ini = q.tools.inifile.open(iniFile)         
+        ip = ini.getValue(name,'ip')
+        port = ini.getValue(name,'restPort')
+        return ip ,port

@@ -44,6 +44,15 @@ from OsisView import OsisView, OsisColumn, OsisType
 from OsisFilterObject import OsisFilterObject
 
 from osis.model.serializers import ThriftSerializer
+from osis.model.serializers.osisyaml import YamlSerializer
+import sys
+sys.path.append('/opt/qbase3/apps/kademlia_dht')
+import dht_client
+from ttypes import *
+
+
+
+
 
 class _OsisPGTypeConverter(object):
     def __init__(self):
@@ -64,8 +73,10 @@ class OsisConnection(object):
     def __init__(self):
         self._dbConn = None
         self._login = None       
+        self._ip_for_kad = None
+        self._port_for_kad = None
     
-    def connect(self, ip, db, login, passwd):
+    def connect(self, ip, db, login, passwd,isView,port_to_connect=5000,port_to_start=8000):
         """
         Connect to the postgresql server
         
@@ -74,37 +85,34 @@ class OsisConnection(object):
         @param login : login to connect
         @param passwd : password to connect
         """
-        self._dbConn = DBConnection(ip, db, login, passwd)
+        self._ip_for_kad=ip
+        self._port_for_kad=int(port_to_connect)
         self._login = login
+        self._login = login
+        if isView :
+            self._dbConn = DBConnection('127.0.0.1', 'osis', 'qbase', 'pass123' )
         
 
-    def objectExists(self, objType, guid, version):
+    def objectExists(self, objType, guid):
         """
         Checks if an instance of objType with the supplied guid exists
         
         @param objType : type of object to check
         @param guid : unique identifier 
-        @param version : unique version for the given guid
         """
         
-        return self.viewObjectExists(objType, 'main', guid, version)
+        return self.viewObjectExists(objType, 'main', guid)
     
-    def viewObjectExists(self, objType, viewName, guid, version):
+    def viewObjectExists(self, objType, viewName, guid):
         """
         Checks if an instance of objType with the supplied guid exists
         
         @param objType : type of object to check
         @param viewName : view whixh contains the object
         @param guid : unique identifier 
-        @param version : unique version for the given guid
         """
-        if not version:
-            q.logger.log("select * from only %s.%s where guid='%s'"%(objType, viewName, guid) ,5)
-            result = self._dbConn.sqlexecute("select * from only %s.%s where guid='%s'"%(objType, viewName, guid)).dictresult()
-        else:
-            q.logger.log("select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version) ,5)
-            result = self._dbConn.sqlexecute("select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version)).dictresult()
-
+        q.logger.log("select * from only %s.main where guid='%s'"%(objType, guid) ,5)
+        result = self._dbConn.sqlexecute("select * from only %s.%s where guid='%s'"%(objType, viewName, guid)).dictresult()
         if result:
             return result[0] > 0
         return False
@@ -120,56 +128,40 @@ class OsisConnection(object):
                          If specified, only the mentioned version will be retrieved, 
                          If ommited, only the active version is retrieved !
         """
-        if not version: 
-            result = self._dbConn.sqlexecute("select * from only %s.main where guid='%s'"%(objType,guid)).dictresult()
-            errorStr = '%s with guid %s not found.'%(objType, guid)
+        q.logger.log("Getting Object guid= %s "%guid,3)
+        if not version:
+            guid_arg=guid
+            versionValue=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , guid_arg)
+            keyValue=guid+str(versionValue.value)
+            keyValue=keyValue
         else:
-            result = self._dbConn.sqlexecute("select * from %s.main where guid='%s' and version = '%s'"%(objType,guid, version)).dictresult()
-            errorStr = '%s with guid %s and version %s not found.'%(objType, guid, version)
-        if not result:
-            q.eventhandler.raiseCriticalError(errorStr)
-        else:
-            result =  result[0]['data'][1:-1]
-            return result.decode('hex')
+            keyValue=guid+version
+            keyValue=keyValue
 
+        result=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , keyValue)
 
-    def runQuery(self,query):
-        '''Run query from OSIS server
-        
-        @param query: Query to execute on OSIS server
-        @type query: string
+        result=str(result.value)
+        if result=="-1":
+            return ""
+        return result.decode('hex');
 
-        @return: result of the query else raise error 
-        @type: List of rows. Each row shall be represented as a dictionary.
-        '''
-	result = self._dbConn.sqlexecute(query).dictresult()
-	if not result:
-        	q.eventhandler.raiseCriticalError('Query:%s  Error in OSIS server.' %query)
-	else:
-		return result
-
-
-
-
-    def objectDelete(self, objType, guid, version):
+    
+    
+    def objectDelete(self, objType, guid,guidversion):
         """
         Delete an instance of objType with the supplied guid
         
         @param objType : type of object to check
         @param guid : unique identifier 
-        @param version : unique version for the given guid
         """   
-        if(self.objectExists(objType, guid, version)):
-            if not version:
-                self._dbConn.sqlexecute("delete from %s.main where guid='%s'"%(objType,guid))   
-            else:
-                self._dbConn.sqlexecute("delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version))   
+       
+        return dht_client.remove( self._ip_for_kad , self._port_for_kad , guid)
+
+        if(self.objectExists(objType, guid)):
+            self._dbConn.sqlexecute("delete from only %s.main where guid='%s'"%(objType,guid))   
             return True
         else:
-            if not version:
-                q.eventhandler.raiseCriticalError('%s with guid %s not found.'%(objType, guid))
-            else:
-                q.eventhandler.raiseCriticalError('%s with guid %s and version %s not found.'%(objType, guid, version))
+            q.eventhandler.raiseCriticalError('%s with guid %s not found.'%(objType, guid))
         
     def objectSave(self,data):
         """
@@ -178,10 +170,9 @@ class OsisConnection(object):
         @param objType : type of object to check
         @param guid : unique identifier 
         """        
-        if not self.objectExists(data.__class__.__name__, data.guid, None):
-            return self._createObject(data)
-        else:
-            return self._updateObject(data)   
+        obj =  self._createObject(data)
+        return obj
+
     
  
     def createObjectType(self, objType):
@@ -189,21 +180,21 @@ class OsisConnection(object):
         Creates the model structure on the database 
         
         @param objType : the object type to create
-        """        
+        """
         objTypeName = objType.__class__.__name__
         self.createObjectTypeByName(objTypeName)
-
+     
     def createObjectTypeByName(self, objTypeName):
         """
         Creates the model structure on the database 
         
         @param objTypeName : the name of the type to create
-        """        
+        """  
         if not self.schemeExists(objTypeName):
             q.logger.log("Creating object schema in database" ,3)
             self._dbConn.sqlexecute('CREATE SCHEMA %s'%objTypeName)
             q.logger.log("Creating object main table in database" ,3)
-            self._dbConn.sqlexecute('CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName) 
+            self._dbConn.sqlexecute('CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName)
             q.logger.log("Creating object main archive table in database" ,3)
             self._dbConn.sqlexecute('CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName})
             q.logger.log("Creating delete rule in database" ,3)
@@ -211,20 +202,21 @@ class OsisConnection(object):
             q.logger.log("Creating update rule in database" ,3)
             self._dbConn.sqlexecute('CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName})
         else:
-            q.logger.log("ObjectType %s already exists"%objTypeName ,3)            
+            q.logger.log("ObjectType %s already exists"%objTypeName ,3)        
+
     def schemeExists(self, name):
         """
         Checks if the schema with the supplied name exists
         
         @param name : name of the schema to check
-        """        
+        """
         sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'"%name 
         q.logger.log(sql ,5)
         result = self._dbConn.sqlexecute(sql).dictresult()
         if result:
             return True
         else:
-            return False    
+            return False 
 
     def viewExists(self, objType, viewname):
         """
@@ -248,27 +240,53 @@ class OsisConnection(object):
         @param data : object to store
         """         
         data.creationdate = time.strftime('%Y-%m-%d %H:%M', time.localtime())
-        
+
+        listKeyValue=[]
         obj = data.serialize(ThriftSerializer)
         obj = obj.encode('hex')
-        q.logger.log("insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj) ,5)
-        self._dbConn.sqlexecute("insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj))   
-        return data
-    
+        keyValue=data.guid+data.version
+        listKeyValue.append(KeyValuePair( keyValue,obj))
+
+        listKeyValue.append(KeyValuePair(data.guid, data.version))
+        dht_client.putBulkData(self._ip_for_kad , self._port_for_kad,listKeyValue)
+ 
     def _updateObject(self, data):
         """
-        Update the supplied data in the database
+        #Update the supplied data in the database
         
         @param data : object to update
         """         
+        
         data.creationdate = time.strftime('%Y-%m-%d %H:%M', time.localtime())
-        obj = data.serialize(ThriftSerializer)
+        #obj = data.serialize(ThriftSerializer)
+        obj = data.serialize(YamlSerializer)
         obj = obj.encode('hex')
         q.logger.log("update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}') where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid) ,5)
         self._dbConn.sqlexecute("update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid))
         return data
 
-    def objectsFind(self, objType, filterobject, viewToReturn=None):
+    def objectsSearch(self, objType, query_string):
+        """
+        returns a list of searched string
+        
+        @param objType : type of object to search
+        @param query_string : Query string
+        @param return the string contain the result
+        """
+        results = []
+        tempdata=dht_client.parse_query( self._ip_for_kad , self._port_for_kad , query_string)
+        q.logger.log("Serching result =%s"%tempdata,3)
+        splitter=re.compile(r'[$]')
+        lines=splitter.split(tempdata)
+        q.logger.log("Splited searched result  %s"%lines,3)
+       
+       #return lines
+        for items in lines:
+            if items != "" :
+                results.append(items)
+        return results
+
+    def objectsFind(self, objType, filterobject, viewToReturn):
         """
         returns a list of matching guids according to the supplied fitlerobject filters
         
@@ -277,28 +295,29 @@ class OsisConnection(object):
         @param viewToReturn : the view to use to return the list of found objects
         """
         results = []
-        
+
         if viewToReturn:
             sql = "select guid from %s.%s"%(objType, viewToReturn)
         else:
             sql = "select guid from only %s.%s"%(objType, 'main')
-            
+
         rawdata = self._dbConn.sqlexecute(sql).dictresult()
         for row in rawdata:
-            results.append(row['guid'])  
-            
+            results.append(row['guid'])
+
         for item in filterobject.filters:
             view = item.keys()[0]
             field = item.values()[0].keys()[0]
             fieldvalue = item.values()[0].values()[0]
             q.logger.log("Process Filter : (%s.%s = %s)"%(view, field, fieldvalue) ,3)
-            results = self._getFilterResults(objType, view, field , fieldvalue , results)            
-            
+            results = self._getFilterResults(objType, view, field , fieldvalue , results)
+
         if viewToReturn:
             q.logger.log("Building view %s"%viewToReturn ,3)
             results = self._getViewResults(objType, viewToReturn, results)
-            
+
         return results
+
     
     def getFilterObject(self):
         """
@@ -341,22 +360,22 @@ class OsisConnection(object):
         self._dbConn.sqlexecute('DROP TABLE %s.%s CASCADE'%(objType, viewName))
         return True
     
-    def viewDelete(self, objType, viewName, guid, versionguid=None):
+    def viewDelete(self, objType, viewName, viewguid, versionguid=None):
         """
-        Removes row(s) with the supplied guid from the view
+        Removes the row with the supplied viewguid from the view
         
         @param objType : the object Type name
         @param viewName : the view from which to remove a row
-        @param viewguid : unique identifier (GUID) for the object
+        @param viewguid : unique identifier for the object
         @param versionguid : unique identifier indicating the version of the object. (Optional)
                              If specified, only the mentioned version will be removed, 
                              If ommited, all versions will be removed !
         """      
         
         if not versionguid:
-            self._dbConn.sqlexecute("delete from %s.%s where guid='%s'"%(objType, viewName, guid))   
+            self._dbConn.sqlexecute("delete from %s.%s where guid='%s'"%(objType, viewName, viewguid))   
         else:
-            self._dbConn.sqlexecute("delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, guid, versionguid))   
+            self._dbConn.sqlexecute("delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, viewguid, versionguid))   
             
         return True
             
@@ -412,7 +431,7 @@ class OsisConnection(object):
         select column_name, data_type
            from information_schema.columns
            where table_name = '%s' and table_schema = '%s'
-        """%(view, objType.lower())
+        """%(view, objType)
         
         coldef = list()
         columns = self._dbConn.sqlexecute(colList).getresult()
@@ -445,6 +464,8 @@ class OsisConnection(object):
                 'mainversion':mainversion,
                 'viewversion':viewversion,
                 'guids':guids}
+    
+        sql = """select %(viewname)s.* from %(viewname)s where %(viewguid)s in (%(guids)s) """%{'viewname':viewname, 'viewguid':viewguid, 'guids':guids}
         
         rawdata = self._dbConn.sqlexecute(sql).getresult()
         
@@ -483,6 +504,8 @@ class OsisConnection(object):
                 'viewversion':viewversion,
                 'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue),
                 'guids':guids}
+
+        sql = """select distinct %(viewguid)s from %(viewname)s where %(filterCondition)s and %(viewguid)s in (%(guids)s)"""%{'viewguid':viewguid,'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue),'viewname':viewname, 'viewguid':viewguid, 'guids':guids}
 
         rawdata = self._dbConn.sqlexecute(sql).dictresult()
         for row in rawdata:

@@ -41,6 +41,8 @@ logger = logging.getLogger('osis') #pylint: disable-msg=C0103
 
 ROOTOBJECT_TYPES = dict()
 
+from osis.model.serializers.osisyaml import YamlSerializer
+
 def init(model_path):
     '''Initialize the OSIS library
 
@@ -51,6 +53,7 @@ def init(model_path):
     import osis.client.connection
 
     types = list(osis.utils.find_rootobject_types(model_path))
+    logger.info('printing all types %s'%str(types) )
 
     for type_ in types:
         name = type_.__name__
@@ -59,6 +62,31 @@ def init(model_path):
         ROOTOBJECT_TYPES[name] = type_
 
     osis.client.connection.update_rootobject_accessors()
+
+def prepare_and_send_xml_structure_to_compass(ip,port):
+    '''Initialize the OSIS library
+
+    @param model_path: Folder path containing all root object model modules
+    @type model_path: string
+    '''
+    
+    import osis.utils
+    import osis.client.connection
+    import sys
+    sys.path.append('/opt/qbase3/apps/kademlia_dht/')
+    import dht_client
+    ip=str(ip)
+    port=int(port)
+    dht_client.initialise(ip,port)
+
+    for items in ROOTOBJECT_TYPES:
+	logger.info(' sending parameters %s'%ROOTOBJECT_TYPES[items] )
+    	rr=YamlSerializer.class_structure_serialize(ROOTOBJECT_TYPES[items])
+	logger.info('inside osis , got value %s'%rr)
+	dht_client.send_data(ip,port,ROOTOBJECT_TYPES[items].__name__,rr,"4")
+
+    dht_client.disconnect_from_network()
+
 
 
 # Set up binding to PyMonkey logging

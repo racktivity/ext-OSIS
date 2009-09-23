@@ -38,6 +38,8 @@
 import base64
 import logging
 import xmlrpclib
+import time
+
 
 logger = logging.getLogger('osis.client.xmlrpc') #pylint: disable-msg=C0103
 
@@ -71,6 +73,14 @@ class XMLRPCTransport(object):
         '''
         logger.debug('GET %s %s' % (type_, guid))
         return base64.decodestring(self.proxy.get(type_, guid, serializer))
+
+    def delete(self,type_,guid):
+        ""
+        ""
+        logger.debug("Delete guid =%s %s"% (type_,guid))
+        msg="message %s %s "% (type_,guid)
+        print msg
+        return self.proxy.delete(type_,guid)
 
     def get_version(self, type_, guid, version, serializer):
         '''Retrieve an serialized object from the server
@@ -142,9 +152,24 @@ class XMLRPCTransport(object):
         @param serializer: Name of the serialization method being used
         @type serializer: string
         '''
+
         data = base64.encodestring(data)
         logger.debug('PUT %s' % type_)
         self.proxy.put(type_, data, serializer)
+
+
+    def search(self, type_, query_string):
+        '''Perform a filter operation on the server
+
+        @param type_: Root object type name
+        @type type_: string
+        @param filter_: Filter definition
+        @ quesry_string :qurey to excuted in index server
+
+        @return: string which contain the whole data
+        @rtype: tuple<string> or tuple
+        '''
+        return self.proxy.search(type_, query_string)
 
     def find(self, type_, filter_, view):
         '''Perform a filter operation on the server
@@ -156,7 +181,7 @@ class XMLRPCTransport(object):
         @param view: View to return
         @type view: string
 
-        @return: List of GUIDs or OsisList of data
+        @return: OsisList of data
         @rtype: tuple<string> or tuple
         '''
         filter_data = filter_.filters
@@ -165,3 +190,4 @@ class XMLRPCTransport(object):
             return self.proxy.find(type_, filter_data, view)
         else:
             return self.proxy.find(type_, filter_data)
+

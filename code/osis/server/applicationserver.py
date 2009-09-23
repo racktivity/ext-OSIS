@@ -45,6 +45,11 @@ from pymonkey import q #pylint: disable-msg=F0401
 
 from osis.server.base import BaseServer
 from osis.server.exceptions import ObjectNotFoundException
+import sys
+#q.dirs.baseDir
+sys.path.append(q.dirs.baseDir)
+
+import time
 
 def initialize():
     '''Set up OSIS'''
@@ -124,10 +129,10 @@ class OsisServer(BaseServer):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
 
-	# Set up tasklet call parameters
-    	params = {'query': query}
-    	self.tasklet_engine.execute(params=params, tags=('osis', 'query')) 
-	return  params['result']
+		# Set up tasklet call parameters
+        params = {'query': query}
+        self.tasklet_engine.execute(params=params, tags=('osis', 'query')) 
+        return  params['result']
 
 
     @q.manage.applicationserver.expose
@@ -193,18 +198,38 @@ class OsisServer(BaseServer):
         @type serializer: string
         '''
         # Decode Base64-encoded data
-        data = base64.decodestring(data)
+        #data = base64.decodestring(data)
+        data = data.decode('hex')
         BaseServer.put(self, objectType, data, serializer)
+        
         return True
 
     @q.manage.applicationserver.expose
-    def find(self, objectType, filters, view=''):
+    def search(self, objectType, query_string):
+        """
+        @param objectType: type of the object
+        @param filters: filters. list of dicts
+        @query_string: sql string type Query
+    
+         @return type sting data
+        """
+        #return BaseServer.find(self, objectType, filters, view)
+        logger.info("At application server search string=%s" % query_string);
+        params = { 'rootobjecttype': objectType, 'query': query_string }
+        self.tasklet_engine.execute(params=params, tags=('osis', 'searchobject'))
+        logger.info("At application server search %s" %str(params['result']));	
+        return  params['result']
+
+    @q.manage.applicationserver.expose
+    def find(self, objectType, filters, view):
         """
         @param objectType: type of the object
         @param filters: filters. list of dicts
         @param view: view to return
         """
         return BaseServer.find(self, objectType, filters, view)
+
+
 
 
     #pylint: disable-msg=W0613
@@ -262,6 +287,7 @@ class OsisServer(BaseServer):
         @type object_: object
         '''
         # Execute store taslkets
+
         params = {
             'rootobject': object_,
             'rootobjecttype': object_type,
@@ -270,6 +296,7 @@ class OsisServer(BaseServer):
         logger.debug('[PUT] Calling store taslkets for %s %s' % \
                         (object_type, object_.guid))
         self.tasklet_engine.execute(params=params, tags=('osis', 'store',))
+
 
 
     def execute_filter(self, object_type, filter_, view):
