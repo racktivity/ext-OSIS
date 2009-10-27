@@ -43,7 +43,7 @@ import time
 
 class OsisDB(object):
     
-    def addConnection(self, name, ip, database, login, passwd,restPort=8889,port_to_connect=5000,port_to_start=8000):
+    def addConnection(self, name, ip, database, login, passwd,restPort=8889):
         """
         Add an Osis connection to the configuration
         
@@ -61,6 +61,11 @@ class OsisDB(object):
         
         if not ini.checkSection(name):
             ini.addSection(name)
+
+	# below 2 ports are not being used as of now , will be removed permanently after confimation about dataport and adminport`
+	port_to_connect=5000
+	port_to_start=8000
+
         
         ini.addParam(name,'ip',ip)
         ini.addParam(name,'database',database)

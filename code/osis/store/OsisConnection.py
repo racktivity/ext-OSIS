@@ -47,8 +47,12 @@ from osis.model.serializers import ThriftSerializer
 from osis.model.serializers.osisyaml import YamlSerializer
 from pg import ProgrammingError
 import sys
-sys.path.append('/opt/qbase3/apps/kademlia_dht')
-import dht_client
+#sys.path.append('/opt/qbase3/apps/kademlia_dht')
+#import dht_client
+sys.path.append('/opt/qbase3/lib/pymonkey/extensions/database/jdbclient')
+import juggernautns_client
+jdb_client=juggernautns_client.juggernautns_client()
+
 from ttypes import *
 import exceptions
 import traceback
@@ -146,14 +150,16 @@ class OsisConnection(object):
         q.logger.log("Getting Object guid= %s "%guid,3)
         if not version:
             guid_arg=guid
-            versionValue=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , guid_arg)
+            #versionValue=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , guid_arg)
+            versionValue=jdb_client.get(guid_arg)
             keyValue=guid+str(versionValue.value)
             keyValue=keyValue
         else:
             keyValue=guid+version
             keyValue=keyValue
 
-        result=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , keyValue)
+        #result=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , keyValue)
+        result=jdb_client.get(keyValue)
 
         result=str(result.value)
         if result=="-1":
@@ -190,7 +196,8 @@ class OsisConnection(object):
         @param guid : unique identifier 
         """   
        
-        return dht_client.remove( self._ip_for_kad , self._port_for_kad , guid)
+        #return dht_client.remove( self._ip_for_kad , self._port_for_kad , guid)
+        return jdb_client.remove( guid)
 
         if(self.objectExists(objType, guid)):
             self._dbConn.sqlexecute("delete from only %s.main where guid='%s'"%(objType,guid))   
@@ -283,7 +290,8 @@ class OsisConnection(object):
         listKeyValue.append(KeyValuePair( keyValue,obj))
 
         listKeyValue.append(KeyValuePair(data.guid, data.version))
-        dht_client.putBulkData(self._ip_for_kad , self._port_for_kad,listKeyValue)
+        #dht_client.putBulkData(self._ip_for_kad , self._port_for_kad,listKeyValue)
+        jdb_client.putAll(listKeyValue)
  
     def _updateObject(self, data):
         """
@@ -308,6 +316,9 @@ class OsisConnection(object):
         @param query_string : Query string
         @param return the string contain the result
         """
+	# The below 'parse_query' function is not available in the latest juggernautdb.
+	# This function had been added for the 'indexing' functionality, which is not available now.
+	return
         results = []
         tempdata=dht_client.parse_query( self._ip_for_kad , self._port_for_kad , query_string)
         q.logger.log("Serching result =%s"%tempdata,3)
