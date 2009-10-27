@@ -134,6 +134,27 @@ class OsisServer(BaseServer):
         self.tasklet_engine.execute(params=params, tags=('osis', 'query')) 
         return  params['result']
 
+    @q.manage.applicationserver.expose
+    def runQuery(self, query):
+        '''Run query from OSIS server
+
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+
+        # Set up tasklet call parameters
+        params = {'query': query}
+        self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
+        if not 'result' in params or not params['result']:
+            return False
+
+        return params['result']
+
+
+
 
     @q.manage.applicationserver.expose
     def delete(self, objectType, guid):

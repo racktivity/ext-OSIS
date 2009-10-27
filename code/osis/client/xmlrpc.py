@@ -74,6 +74,19 @@ class XMLRPCTransport(object):
         logger.debug('GET %s %s' % (type_, guid))
         return base64.decodestring(self.proxy.get(type_, guid, serializer))
 
+    def runQuery(self,query):
+        '''Run query from OSIS server
+
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+
+        return self.proxy.runQuery(query)
+
+
     def delete(self,type_,guid):
         ""
         ""

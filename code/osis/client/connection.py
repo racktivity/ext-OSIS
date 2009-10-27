@@ -119,6 +119,19 @@ class OsisClient(object):
         ret=urllib.urlopen(commandstr).read()
         return ret
 
+    def query(self, Query):
+        ''' run query from OSIS server
+
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+
+        return self.transport.runQuery(Query)
+
+
     def  delete(self,guid,version=None):
         if not version:
           return  self.transport.delete(self._ROOTOBJECTTYPE.__name__,guid)

@@ -45,10 +45,25 @@ from OsisFilterObject import OsisFilterObject
 
 from osis.model.serializers import ThriftSerializer
 from osis.model.serializers.osisyaml import YamlSerializer
+from pg import ProgrammingError
 import sys
 sys.path.append('/opt/qbase3/apps/kademlia_dht')
 import dht_client
 from ttypes import *
+import exceptions
+import traceback
+
+class OsisException(exceptions.Exception):
+    def __init__(self, command, msg):
+        msg = self.handleException(command, msg)
+        self.errmsg = msg
+        self.args = (msg,)
+
+    def handleException(self, command, msg):
+        errorMsg = 'Exception occurred while executing \"%s\".\n'%command
+        errorMsg += traceback.format_exc()
+        return errorMsg
+
 
 
 
@@ -144,6 +159,26 @@ class OsisConnection(object):
         if result=="-1":
             return ""
         return result.decode('hex');
+
+    def runQuery(self, query):
+        '''Run query from OSIS server
+
+        @param query: Query to execute on OSIS server
+        @type query: string
+
+        @return: result of the query else raise error
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+        try:
+            result= self._dbConn.sqlexecute(query)
+            q.logger.log("Getting  %s "%result,3)
+	    
+            if result:
+                return result.dictresult()
+            return dict()
+        except ProgrammingError,ex:
+            raise OsisException(query, ex)
+
 
     
     

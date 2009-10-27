@@ -45,6 +45,9 @@ except:
 
 logger = logging.getLogger('osis.model.thrift')
 
+class LocTType:
+    DATETIME=TType.DOUBLE
+
 try:
     from pymonkey.baseclasses import BaseEnumeration
 except ImportError:
@@ -55,6 +58,8 @@ from osis.model.model import DEFAULT_FIELDS
 import osis.model
 
 TYPE_SPEC_CACHE = dict()
+
+
 
 def struct_args(attr):
     return (attr.type_, generate_thrift_spec(attr.type_.OSIS_MODEL_INFO))
@@ -79,6 +84,8 @@ FIELD_TYPE_ATTR_ARGS_MAP = {
     osis.model.Dict: dict_args,
     osis.model.List: list_args,
     osis.model.Enumeration: lambda o: None,
+    osis.model.DateTime:lambda o: None,
+
 }
 
 FIELD_TYPE_THRIFT_TYPE_MAP = {
@@ -91,6 +98,8 @@ FIELD_TYPE_THRIFT_TYPE_MAP = {
     osis.model.Dict: lambda o: TType.MAP,
     osis.model.List: lambda o: TType.LIST,
     osis.model.Enumeration: lambda o: TType.STRING,
+    osis.model.DateTime:lambda o: LocTType.DATETIME,
+
 }
 
 def generate_thrift_spec(typeinfo):
@@ -153,7 +162,13 @@ WRITE_TYPE_HANDLERS = {
     TType.STRUCT: lambda data, prot, info: _write_struct(data, prot, info),
     TType.LIST: lambda data, prot, info: _write_list(data, prot, info),
     TType.MAP: lambda data, prot, info: _write_map(data, prot, info),
+    LocTType.DATETIME:lambda data,prot,info:_write_dateTime(data,prot,info),
 }
+
+def _write_dateTime(data,prot,info):
+    import time
+    value=time.mktime( data.timetuple())
+    prot.writeDouble(value) 
 
 def _write_map(data, prot, info):
     assert info[0] == TType.STRING, 'Only string keys supported'
@@ -219,8 +234,22 @@ READ_TYPE_HANDLERS = {
     TType.STRUCT: lambda prot, info: _read_struct(prot, info),
     TType.LIST: lambda prot, info: _read_list(prot, info),
     TType.MAP: lambda prot, info: _read_map(prot, info),
+    LocTType.DATETIME: lambda prot,info: _read_datetime(prot,info),
 }
 
+def _read_datetime(prot,info):
+    obj=prot.readDouble()
+    import datetime;
+    import time
+    allinfo=time.localtime(obj)
+    year=allinfo[0]
+    month=allinfo[1]
+    date=allinfo[2]
+    hour=allinfo[3]
+    minite=allinfo[4]
+    second=allinfo[5]
+    obj=datetime.datetime(year,month,date,hour,minite,second)
+    return obj
 
 def _read_map(prot, info):
     obj = dict()
@@ -350,7 +379,8 @@ class ThriftSerializer(object):
         model_info = object_type.OSIS_MODEL_INFO
         spec = generate_thrift_spec(model_info)
         wrapped = ThriftObjectWrapper(object_)
-        data = thrift_write(wrapped, spec, _force_native=cls.FORCE_NATIVE)
+        #data = thrift_write(wrapped, spec, _force_native=cls.FORCE_NATIVE)
+        data = thrift_write(wrapped, spec, _force_native=True)
         return data
 
     @classmethod
@@ -358,7 +388,9 @@ class ThriftSerializer(object):
         model_info = type_.OSIS_MODEL_INFO
         spec = generate_thrift_spec(model_info)
         object_ = type_()
-        thrift_read(object_, spec, data, _force_native=cls.FORCE_NATIVE)
+        #thrift_read(object_, spec, data, _force_native=cls.FORCE_NATIVE)
+        thrift_read(object_, spec, data, _force_native=True)
+
         return object_
 
 
