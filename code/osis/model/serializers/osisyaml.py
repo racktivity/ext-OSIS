@@ -136,6 +136,7 @@ TYPE_SET_HANDLERS = {
     osis.model.Dict: load_dict,
     osis.model.Object: lambda a, o: dict_to_object(a.type_(), o),
     osis.model.List: load_list,
+    osis.model.DateTime: lambda a, o:o,
 }
 
 def dict_to_object(object_, data):
