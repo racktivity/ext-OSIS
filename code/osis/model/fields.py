@@ -75,7 +75,7 @@ class Float(Field, ExposedField):
     VALID_TYPE = float
 
 class String(Field, ExposedField):
-    VALID_TYPE = str
+    VALID_TYPE = basetring
 
 class GUID(String):
     pass
@@ -181,14 +181,14 @@ def TypedList(type_):
 
             if sequence:
                 for item in sequence:
-                    if not item.__class__ == type_.VALID_TYPE:
+                    if not isinstance(item, type_.VALID_TYPE):
                         raise TypeError('Only objects of type %s '
                                         'can be stored' % \
                                         type_.VALID_TYPE.__name__)
                     self.append(item)
 
         def append(self, object_):
-            if not object_.__class__ == type_.VALID_TYPE:
+            if not isinstance(object_, type_.VALID_TYPE):
                 raise TypeError('Only objects of type %s can be stored' % \
                                     type_.VALID_TYPE.__name__)
             if hasattr(object_, 'guid') and not object_.guid:
@@ -266,7 +266,7 @@ def TypedDict(type_):
                 for key, value in dict_.iteritems():
                     if not isinstance(key, basestring):
                         raise TypeError('Dictionary keys should be strings')
-                    if not value.__class__ == type_.VALID_TYPE:
+                    if not isinstance(value, type_.VALID_TYPE):
                         raise TypeError('Only objects of type %s '
                                         'can be stored' % \
                                         type_.VALID_TYPE.__name__)
@@ -278,7 +278,7 @@ def TypedDict(type_):
         def __setitem__(self, key, value):
             if not isinstance(key, basestring):
                 raise TypeError('Dictionary keys should be strings')
-            if not value.__class__ == type_.VALID_TYPE:
+            if not isinstance(value,type_.VALID_TYPE):
                 raise TypeError('Only objects of type %s '
                                 'can be stored' % \
                                 type_.VALID_TYPE.__name__)
