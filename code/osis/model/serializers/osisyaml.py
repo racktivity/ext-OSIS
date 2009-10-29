@@ -483,6 +483,7 @@ TYPE_HANDLERS = {
     osis.model.Boolean: lambda a, o: o,
     osis.model.List: handle_list,
     osis.model.Dict: handle_dict,
+    osis.model.DateTime: lambda a, o:o,
     osis.model.Object: lambda a, o: object_to_dict(o),
 }
 
@@ -548,6 +549,7 @@ TYPE_SET_HANDLERS = {
     osis.model.Boolean: lambda a, o: o,
     osis.model.Dict: load_dict,
     osis.model.Object: lambda a, o: dict_to_object(a.type_(), o),
+    osis.model.DateTime: lambda a, o:o,
     osis.model.List: load_list,
 }
 
@@ -575,7 +577,7 @@ def dict_to_object(object_, data):
 
     return object_
 
-import dict_time
+#import dict_time
 
 class YamlSerializer(object):
     NAME = 'yaml'
@@ -587,17 +589,17 @@ class YamlSerializer(object):
         data = object_to_dict(object_)
 	t1=time.time()
 	t2=t1-t0
-	dict_time.td+=t2
-        logger.info('dict time is $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ : %s' %dict_time.td)
-        logger.info('Object before Serializing : %s' %str(data))
-        logger.info('Serializing object using YAML................$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+	#dict_time.td+=t2
+        #logger.info('dict time is $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ : %s' %dict_time.td)
+        #logger.info('Object before Serializing : %s' %str(data))
+        #logger.info('Serializing object using YAML................$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         #to_return = yaml.dump(data, default_flow_style=False)
 	t0=time.time()
 	to_return = dump(data, Dumper=Dumper)
 	t1=time.time()
 	t2=t1-t0
-	dict_time.ts+=t2
-        logger.info('serial time is $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ : %s' %dict_time.ts)
+	#dict_time.ts+=t2
+        #logger.info('serial time is $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ : %s' %dict_time.ts)
 	#to_return = dump(data)
 
         #~ logger.info('Serialized object: \n%s' %str(to_return))
