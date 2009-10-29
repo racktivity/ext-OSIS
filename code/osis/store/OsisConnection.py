@@ -51,7 +51,22 @@ import sys
 #import dht_client
 sys.path.append('/opt/qbase3/lib/pymonkey/extensions/database/jdbclient')
 import juggernautns_client
-jdb_client=juggernautns_client.juggernautns_client()
+is_connected=0
+#jdb_client=juggernautns_client.juggernautns_client()
+jdb_client=None
+
+def  connect_if_not_connected(Ip):
+	global is_connected
+	if is_connected == 0:
+		global jdb_client
+		jdb_client = q.jdb.client.getConnection("osis","pass","master",Ip)
+		global is_connected
+		is_connected=1
+	global jdb_client
+	return jdb_client
+	
+	
+	
 
 from ttypes import *
 import exceptions
@@ -151,6 +166,7 @@ class OsisConnection(object):
         if not version:
             guid_arg=guid
             #versionValue=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , guid_arg)
+	    connect_if_not_connected(self._ip_for_kad)
             versionValue=jdb_client.get(guid_arg)
             keyValue=guid+str(versionValue.value)
             keyValue=keyValue
@@ -159,6 +175,7 @@ class OsisConnection(object):
             keyValue=keyValue
 
         #result=dht_client.receive_data( self._ip_for_kad , self._port_for_kad , keyValue)
+	connect_if_not_connected(self._ip_for_kad)
         result=jdb_client.get(keyValue)
 
         result=str(result.value)
@@ -197,6 +214,7 @@ class OsisConnection(object):
         """   
        
         #return dht_client.remove( self._ip_for_kad , self._port_for_kad , guid)
+	connect_if_not_connected(self._ip_for_kad)
         return jdb_client.remove( guid)
 
         if(self.objectExists(objType, guid)):
@@ -291,6 +309,7 @@ class OsisConnection(object):
 
         listKeyValue.append(KeyValuePair(data.guid, data.version))
         #dht_client.putBulkData(self._ip_for_kad , self._port_for_kad,listKeyValue)
+	connect_if_not_connected(self._ip_for_kad)
         jdb_client.putAll(listKeyValue)
  
     def _updateObject(self, data):
@@ -316,8 +335,9 @@ class OsisConnection(object):
         @param query_string : Query string
         @param return the string contain the result
         """
-	# The below 'parse_query' function is not available in the latest juggernautdb.
-	# This function had been added for the 'indexing' functionality, which is not available now.
+
+        # The below 'parse_query' function is not available in the latest juggernautdb.
+        # This function had been added for the 'indexing' functionality, which is not available now.
 	return
         results = []
         tempdata=dht_client.parse_query( self._ip_for_kad , self._port_for_kad , query_string)
