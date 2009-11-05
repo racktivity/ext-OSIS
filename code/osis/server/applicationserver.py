@@ -128,7 +128,7 @@ class OsisServer(BaseServer):
     	params = {'query': query}
     	self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
 	if not 'result' in params or not params['result']:
-            return False
+            return list()
 
         return params['result']
 
