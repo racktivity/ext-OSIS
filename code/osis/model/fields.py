@@ -75,7 +75,7 @@ class Float(Field, ExposedField):
     VALID_TYPE = float
 
 class String(Field, ExposedField):
-    VALID_TYPE = basetring
+    VALID_TYPE = basestring
 
 class GUID(String):
     pass
