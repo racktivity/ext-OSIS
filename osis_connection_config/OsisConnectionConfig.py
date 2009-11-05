@@ -14,7 +14,7 @@ class OsisConnectionConfig(ConfigManagementItem):
         self.dialogAskInteger('port', 'Enter port of the Application Server', 80)
         self.dialogAskString('path', 'Enter URL path of the XML-RPC transport of the Application Server', '/appserver/xmlrpc/')
         defaultDir = q.system.fs.joinPaths(q.dirs.baseDir, 'libexec','osis')
-        self.params['model_path'] = self.params['model_path'] or defaultDir
+        self.params['model_path'] = self.params['model_path'] if 'model_path' in self.params else defaultDir
         self.dialogAskString('model_path', 'Enter dir path of osis model', defaultDir)
 
     def show(self):
