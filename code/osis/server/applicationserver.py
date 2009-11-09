@@ -151,8 +151,6 @@ class OsisServer(BaseServer):
              'rootobjectversionguid': None
         }
 
-        logger.debug('[DELETE] Executing \'delete\' taklets for %s guid: %s' % \
-                     (objectType, guid))
         self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
 
         if not 'result' in params or not params['result']:
@@ -181,8 +179,6 @@ class OsisServer(BaseServer):
             'rootobjectversionguid': version
         }
 
-        logger.debug('[DELETE] Executing \'delete\' taklets for %s guid: %s ; version: %s' % \
-                     (objectType, guid,version))
         self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
 
 
@@ -261,8 +257,6 @@ class OsisServer(BaseServer):
         }
 
         # Call tasklets. In the end, 'rootobject' should be in params
-        logger.debug('[GET] Executing \'get\' taklets for %s %s' % \
-                        (object_type, guid))
         self.tasklet_engine.execute(params=params, tags=('osis', 'get', ))
 
         if not 'rootobject' in params:
@@ -285,8 +279,7 @@ class OsisServer(BaseServer):
             'rootobjecttype': object_type,
         }
 
-        logger.debug('[PUT] Calling store taslkets for %s %s' % \
-                        (object_type, object_.guid))
+
         self.tasklet_engine.execute(params=params, tags=('osis', 'store',))
 
 

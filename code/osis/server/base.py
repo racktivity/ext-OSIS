@@ -162,8 +162,6 @@ class BaseServer(object):
         @param serializer: Name of the serializer to use
         @type serializer: string
         '''
-        logger.info('[PUT] object_type=%s, serializer=%s' % \
-                    (object_type, serializer))
 
         try:
             class_ = ROOTOBJECT_TYPES[object_type]
@@ -181,9 +179,6 @@ class BaseServer(object):
 
         self.put_object_in_store(object_type, object_)
 
-        logger.debug('[PUT] Object %s %s stored' % \
-                     (object_type, object_.guid))
-
     def find(self, object_type, filters, view=None):
         '''Execute a find (query) operation on the store
 
@@ -199,9 +194,6 @@ class BaseServer(object):
         '''
         # Even if '' is passed, we want none
         view = view or None
-
-        logger.info('[FIND] object_type=%s, filters=%s, view=%s' % \
-                    (object_type, repr(filters), str(view)))
 
         if object_type not in ROOTOBJECT_TYPES:
             raise UnknownObjectTypeException('Unknown object type %s' % \
