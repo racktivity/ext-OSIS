@@ -251,7 +251,6 @@ class OsisConnection(object):
         @param name : name of the schema to check
         """
         sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'"%name
-        q.logger.log(sql ,5)
         result = self._dbConn.sqlexecute(sql).dictresult()
         if result:
             return True
@@ -266,7 +265,6 @@ class OsisConnection(object):
         @param viewname : name of the view to check
         """
         sql =  "select distinct schemaname, tablename from pg_tables where schemaname = '%s' and tablename = '%s'"%(objType, viewname)
-        q.logger.log(sql ,5)
         result = self._dbConn.sqlexecute(sql).dictresult()
         if result:
             return True
