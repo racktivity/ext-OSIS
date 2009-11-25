@@ -43,7 +43,7 @@ from osis.model.serializers import ThriftSerializer
 from osis.model.serializers import YamlSerializer
 from XMLSerializer import XMLSerializer
 from ThriftBase64Serializer import ThriftBase64Serializer
-
+from osis import ROOTOBJECT_TYPES
 
 from osis.client.xmlrpc import XMLRPCTransport
 from osis.client import OsisConnection
@@ -52,6 +52,9 @@ from osis.store.OsisDB import OsisDB
 
 
 class Domain(object):
+    pass
+
+class DummyConnection(object):
     pass
 
 class PyModelOsisClient(object):
@@ -102,26 +105,7 @@ class PyModelOsisClient(object):
     def _deserializer(self, serializer, data):
         return self._ROOTOBJECTTYPE.deserialize(serializer, data)
     
-class RootPyModelObjectAccessor(RootObjectAccessor):
-    
-    def __init__(self, name, type_):
-        '''Initialize a new root object accessor
 
-        @param name: Name of the accessor ('clients' in 'connection.clients')
-        @type name: string
-        @param type_: Root object type to provide access to
-        @type type_: type
-        '''
-        logger.info('Creating root object accessor %s' % name)
-
-        self._name = name
-
-        class AccessorImpl(PyModelOsisClient):
-            '''Implementation of an specific L{OsisClient} root object
-            accessor'''
-            _ROOTOBJECTTYPE = type_
-
-        self._accessorimpl = AccessorImpl
 
 class PyModel():
 
@@ -133,78 +117,17 @@ class PyModel():
             self.__initialize()
             setattr(self, 'initialized', True)
             
-    def _initFromPath(self, model_path):
-        '''Initialize the OSIS library
-            
-        @param model_path: Folder path containing all root object model modules
-        @type model_path: string
-        '''
-        types = list(osis.utils.find_rootobject_types(model_path))
-    
-        for type_ in types:
-            name = type_.__name__
-            if name in ROOTOBJECT_TYPES:
-                raise RuntimeError('Duplicate root object type %s' % name)
-            ROOTOBJECT_TYPES[name] = type_
-    
-        self._update_rootobject_accessors()
-
-
-    def _update_rootobject_accessors(self):
-        '''Update the L{OsisConnection} class so all root object types are
-        accessible
-    
-        Whenever the L{osis.ROOTOBJECT_TYPES} dictionary is updated, this function
-        should be called so the corresponding attributes on the L{OsisConnection}
-        class can be set up.
-        '''
-        logger.info('Updating known RootObjectModel types')
-    
-        from osis import ROOTOBJECT_TYPES as types
-    
-        # Remove all existing accessors
-        for attrname in dir(OsisConnection):
-            attr = OsisConnection.__dict__.get(attrname, None)
-            if attr and isinstance(attr, RootPyModelObjectAccessor):
-                logger.debug('Removing old type %s' % attrname)
-                delattr(OsisConnection, attrname)
-    
-        # Now add all of them again
-        for type_ in types.itervalues():
-            name = getattr(type_, 'OSIS_TYPE_NAME', type_.__name__.lower())
-            accessor = RootPyModelObjectAccessor(name, type_)
-            logger.debug('Adding new type %s' % name)
-            setattr(OsisConnection, name, accessor)
-            
     def importDomain(self, domainname, specpath):
-        self._initFromPath(specpath)
-                
-        try:
-            self.__connection = OsisConnection(XMLRPCTransport('http://localhost:8888', 'osis_service'), ThriftSerializer)
-        except:
-            q.logger.log("[DRPClient] Failed to initialize the OSIS application server service connection: the DRPClient won't work...", 1)
-            return
+        init(specpath, OsisConnection, PyModelOsisClient)
         
-        try:
-            self.__conn = OsisDB().getConnection('main')
-        except:
-             q.logger.log("[DRPClient] Failed to initialize the database connection for OSIS: the DRPClient won't work...", 1)
-             return
-        
-        domain = Domain()
-            
+        domain = Domain()            
         from osis import ROOTOBJECT_TYPES as types
         for type in types.itervalues():
             name = getattr(type, 'OSIS_TYPE_NAME', type.__name__.lower())                
-            #setattr(self, name, getattr(self.__connection, name))
-            setattr(domain, name, getattr(self.__connection, name))
+            setattr(domain, name, getattr(OsisConnection(None,None), name))
         setattr(self, domainname, domain)
-
                     
-    def __initialize(self):
-        
-        #self._initFromPath(q.system.fs.joinPaths(q.dirs.baseDir, 'libexec','osis'))
-        #self._initFromPath(q.system.fs.joinPaths(q.dirs.baseDir, 'lib', 'pymonkey', 'models'))
+    def __initialize(self):        
         parentPath = q.system.fs.joinPaths(q.dirs.baseDir, 'lib', 'pymonkey', 'models')
         for subPath in os.listdir(parentPath):
             domainname = subPath

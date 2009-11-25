@@ -38,6 +38,11 @@ import osis.model
 from osis.model.fields import EmptyObject
 from pymonkey.baseclasses.BaseEnumeration import BaseEnumeration
 
+def getType(obj):
+    """ generates string representation of class of obj 
+        discarding decoration """
+    return str(obj.__class__).split("'")[1].split(".")[-1]
+
 def handle_list(attr, value):
     data = list()
     type_handler = TYPE_HANDLERS[type(attr.type_)]
@@ -161,6 +166,13 @@ def dict_to_object(object_, data):
 
     return object_
 
+def pickle(root, fabric, elementName="root"):
+
+    node = fabric.createElement(elementName)
+    typeStr = getType(root)
+    node.attributes["type"]=typeStr    
+    node.appendChild(fabric.createTextNode(str(root)))
+    return node
 
 def pickleDictItems(root):
     fabric = dom.Document()
@@ -171,6 +183,26 @@ def pickleDictItems(root):
         tempnode.appendChild(pickle(value, fabric, "value"))
         node.appendChild(tempnode)
     return node
+
+def _getElementChilds(node, doLower = 1):
+    """ returns list of (tagname, element) for all element childs of node """
+
+    dolow = doLower and (lambda x:x.lower()) or (lambda x:x)
+    return [ (dolow(no.tagName), no) for no in node.childNodes if no.nodeType != no.TEXT_NODE ]
+
+def _getText(nodelist):
+    """ returns collected and stripped text of textnodes among nodes in nodelist """
+    rc = ""
+    for node in nodelist:
+        if node.nodeType == node.TEXT_NODE:
+            rc = rc + node.data
+    return rc.strip()
+
+def unpickle(node):
+    typeName= node.attributes["type"].value
+    initValue = _getText(node.childNodes)
+    value = eval("%s(%r)" % (typeName, initValue))
+    return value
 
 def unpickleDict(node):
     dd = dict()
