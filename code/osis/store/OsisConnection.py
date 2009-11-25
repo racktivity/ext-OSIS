@@ -74,7 +74,10 @@ class _OsisPGTypeConverter(object):
 
     def convertValue(self, pgType, pgValue):
         pyType = self.convertType(pgType)
+        
         if pgType == 'boolean':
+            if pgValue.__class__ == bool:
+                return pgValue 
             if 'f' in pgValue:
                 return False
             elif 't' in pgValue:
@@ -163,6 +166,7 @@ class OsisConnectionGeneric(object):
         if not result:
             q.eventhandler.raiseCriticalError(errorStr)
         else:
+            print result
             result =  result[0]['data'][1:-1]
             return result.decode('hex')
 
@@ -601,12 +605,18 @@ class PG8000ConnectionResult(object):
         self.desc=desc
         self.r=r
     def getresult(self):
-        print "OSIS getresult: %r\n"%self.r
         return self.r
     def dictresult(self):
-        print "OSIS disctgetresult:\n"
-        result=[dict([(self.desc[j][0],i[j]) for j in range(len(self.desc))]) for i in self.r]
-        print "OSIS DONE: %r\n"%result
+        
+        def pgConvert(v):
+            
+            # Return same output a pymonkey DBConnection
+            if v.__class__ == datetime.datetime:
+                v = v.isoformat().replace('T', ' ')
+            return v
+            
+        result=[dict([(self.desc[j][0], pgConvert(i[j])) for j in range(len(self.desc))]) for i in self.r]
+        
         return result
 
 import uuid
@@ -619,34 +629,48 @@ class PG8000Connection(object):
         import pg8000.types
         # pg8000 doesn't support uuid
         pg8000.types.pg_types[2950]={"bin_in": pg8000_uuid_in}
+        # convert unknown type to string
+        pg8000.types.pg_types[705] ={"bin_in": pg8000.types.varcharin} # TEXT type
         self.pg8conn = DBAPI.connect(user=login, host=ip, database=db, password=passwd)
-        print "PG8000 connect() connection"
+        
     def sqlexecute(self,*l):
-        print "OSIS sqlexecute: %r\n"%l
+        
+        # PG8000 does noet support %
+        l = (q.replace('%', '%%') for q in l)
+        
+        # Ugly part I
+        t = [v for v in l]
+        l = (v for v in t)
+    
         cursor=self.pg8conn.cursor()
         cursor.execute(*l)
         desc=cursor.description
-        l=[i for i in cursor]
-        print "RET",desc,l
-        print "OSIS sqlexecute commit: %r\n"%l
+        
+        # Check of we have a statement which returns a dataset
+        # @todo: How can we improve this?
+        # Ugly part II
+        has_result = bool([True for v in t if v.strip().lower().startswith('select')])
+        
+        l = []
+        
+        if has_result:
+            
+            l=[i for i in cursor]
+            
         self.pg8conn.commit()
+            
         return PG8000ConnectionResult(desc,l)
-
-
 
 class OsisConnectionPG8000(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
-        print "PG8000 connect()"
         self._dbConn = PG8000Connection(ip, db, login, passwd)
         self._login = login
-        print "PG8000 connect()", self._dbConn
 
 def OsisConnection():
-    print "new OsisConnection()"
     # If stackless uses pg8000
     return OsisConnectionPG8000()
     # else uses PYmonkeyDBConnection one
-    return OsisConnectionPYmonkeyDBConnection()
+    #return OsisConnectionPYmonkeyDBConnection()
 
 
 #vim:et ts=4:

@@ -43,6 +43,355 @@ from osis.store.OsisFilterObject import OsisFilterObject
 
 logger = logging.getLogger('osis.client.connection') #pylint: disable-msg=C0103
 
+
+import os.path
+import base64
+import logging
+
+from pymonkey import q #pylint: disable-msg=F0401
+
+
+#################### HACK LOCAL CLIENT ############################
+
+"""
+def initialize():
+    '''Set up OSIS'''
+    osisDir = q.system.fs.joinPaths(q.dirs.baseDir, 'libexec', 'osis')
+    q.system.fs.createDir(osisDir)
+    from osis import init
+    init(osisDir)
+
+initialize()
+"""
+from osis.server.base import BaseServer
+from osis.server.exceptions import ObjectNotFoundException
+
+#
+#class LocalClient(BaseServer):
+#    """
+#    Client bypasssing the XMLRPC stack
+#    """
+#
+#    def __init__(self, transport, serializer, tasklet_path=None):
+#        '''Initialize the OSIS service
+#
+#        @param tasklet_path: Container path of OSIS tasklets
+#        @type tasklet_path: string
+#        '''
+#        BaseServer.__init__(self)
+#        
+#        self.serializer = serializer
+#
+#        tasklet_path = tasklet_path or \
+#                '/opt/qbase3/apps/applicationserver/services/osis_service/tasklets/'
+#        self.tasklet_engine = q.getTaskletEngine(tasklet_path)
+#
+#    def new(self, *args, **kwargs): #pylint: disable-msg=W0142
+#        '''Create a new instance of the root object type
+#
+#        All arguments are handled verbatim to the root object type constructor.
+#        '''
+#        #pylint: disable-msg=E1101
+#        return self._ROOTOBJECTTYPE(*args, **kwargs)
+#
+#    def get(self, guid, version=None):
+#        '''Retrieve an object from the OSIS object store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param guid: GUID of the object to retrieve
+#        @type guid: string
+#        @param serializer: Name of the serializer to use
+#        @type serializer: string
+#
+#        @return: Base64 encoded string of the serialized object
+#        @rtype: string
+#        '''
+#        
+#        if not version:
+#            data = BaseServer.get(self, self._ROOTOBJECTTYPE.__name__, guid,
+#                                      self.serializer.NAME)
+#        else:
+#            data = self.get_version(self._ROOTOBJECTTYPE.__name__,
+#                                              guid, version,
+#                                              self.serializer.NAME)
+#
+#        return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
+#
+#    def get_version(self, objectType, guid, version, serializer):
+#        '''Retrieve a specific version of an object from the OSIS object store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param guid: GUID of the object to retrieve
+#        @type guid: string
+#        @param version: Version GUID of the object to retrieve
+#        @type version: string
+#        @param serializer: Name of the serializer to use
+#        @type serializer: string
+#
+#        @return: Base64 encoded string of the serialized object
+#        @rtype: string
+#        '''
+#        data = BaseServer.get_version(self, objectType, guid, version,
+#                                      self.serializer)
+#
+#        return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
+#
+#    def query(self, Query):
+#        ''' run query from OSIS server
+#
+#        @param query: Query to execute on OSIS server
+#        @type query: string
+#    
+#        @return: result of the query else raise error
+#        @type: List of rows. Each row shall be represented as a dictionary.
+#        '''
+#
+#        return self.runQuery(Query)
+#
+#    def runQuery(self, query):
+#        '''Run query from OSIS server
+#
+#        @param query: Query to execute on OSIS server
+#        @type query: string
+#
+#        @return: result of the query else raise error
+#        @type: List of rows. Each row shall be represented as a dictionary.
+#        '''
+#
+#    # Set up tasklet call parameters
+#        params = {'query': query}
+#        self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
+#        if not 'result' in params or not params['result']:
+#            return list()
+#
+#        return params['result']
+#
+#
+#    def delete(self, guid, version=None):
+#        '''Delete an object from the OSIS object store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param guid: GUID of the object to delete
+#        @type guid: string
+#
+#        @return: True or False, according as deletion succeeds or fails.
+#        '''
+#        
+#        # Set up tasklet call parameters
+#        params = {
+#             'rootobjectguid': guid,
+#             'rootobjecttype': self._ROOTOBJECTTYPE.__name__,
+#             'rootobjectversionguid': version
+#        }
+#
+#        self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
+#
+#        if not 'result' in params or not params['result']:
+#            return False
+#
+#        return params['result']
+#
+#    def save(self, object_):
+#        '''Save a root object to the server
+#
+#        @param object_: Object to store
+#        @type object_: L{osis.model.RootObjectModel}
+#        '''
+#        #pylint: disable-msg=E1101
+#        type_ = self._ROOTOBJECTTYPE.__name__
+#
+#        # Check whether we should set a GUID
+#        try:
+#            guid = object_.guid
+#        except AttributeError:
+#            guid = None
+#        if not guid:
+#            object_.guid = str(uuid.uuid4())
+#
+#        # Set version guid
+#        object_.version = str(uuid.uuid4())
+#
+#        data = object_.serialize(self.serializer)
+#        return self.put(type_, data, self.serializer.NAME)
+#    
+#    def put(self, objectType, data, serializer):
+#        '''Save an object in the OSIS object store
+#
+#        @param objectType: Object type name
+#        @type objectType: string
+#        @param data: Serialized object
+#        @type data: string
+#        @param serializer: Name of the serializer to use
+#        @type serializer: string
+#        '''
+#        BaseServer.put(self, objectType, data, serializer)
+#        return True
+#
+#    def find(self, filter_, view=None):
+#        '''Perform a find/filter operation
+#
+#        If no view name is specified, a list of GUIDs of the matching root
+#        objects is returned. Otherwise a L{ViewResultList} is returned.
+#
+#        @param filter_: Filter description
+#        @type filter_: OsisFilterObject
+#        @param view: View to return
+#        @type view: string
+#
+#        @return: List of GUIDs or view result
+#        @rtype: tuple<string> or L{ViewResultList}
+#        '''
+#        #pylint: disable-msg=E1101
+#        type_ = self._ROOTOBJECTTYPE.__name__
+#
+#        result = BaseServer.find(self, type_, filter_.filters, view)
+#
+#        if not view:
+#            return result
+#        else:
+#            return ViewResultList(result)
+#
+#    
+#    def findAsView(self, filter_, viewName):
+#        """
+#        Perform a find/filter operation.
+#        @param filter_: Filter description
+#            @type filter_: OsisFilterObject
+#            @param view: name of the view to return
+#            @type view: string
+#    
+#        @return: list of dicts representing the view{col: value}
+#        """
+#        type_ = self._ROOTOBJECTTYPE.__name__
+#
+#        
+#        return BaseServer.findAsView(self, type_, filter_.filters, viewName)
+#
+#    #pylint: disable-msg=W0613
+#    def get_object_from_store(self, object_type, guid, preferred_serializer,
+#                              version=None):
+#        '''Retrieve an object from the store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param guid: GUID of the object to retrieve
+#        @type guid: string
+#        @param preferred_serializer: The preferred serializer type name
+#                                     If this is given and the store stores
+#                                     objects using this serialization format, no
+#                                     deserialization is required and the
+#                                     serialized form can be returned as-is.
+#        @type preferred_serializer: string
+#        @param version: Version of the object to retrieve
+#        @type version: string
+#
+#        @return: Tuple containing the deserialized object and its serialized
+#                 form according to C{preferred_serializer}, where one of the two
+#                 items is C{None}: the object if the serialized form could be
+#                 returned, the serialized form if it is not available but the
+#                 deserialized object is given instead.
+#        @rtype: tuple<object, string>
+#
+#        @raise ObjectNotFoundException: The object could not be found
+#        '''
+#        # Set up tasklet call parameters
+#        params = {
+#            'rootobjectguid': guid,
+#            'rootobjecttype': object_type,
+#            'rootobjectversionguid': version,
+#        }
+#
+#        # Call tasklets. In the end, 'rootobject' should be in params
+#        self.tasklet_engine.execute(params=params, tags=('osis', 'get', ))
+#
+#        if not 'rootobject' in params:
+#            raise ObjectNotFoundException('Object %s with guid %s '
+#                                          'not found' % (object_type, guid))
+#
+#        return params['rootobject'], None
+#
+#    def put_object_in_store(self, object_type, object_):
+#        '''Store an object in the store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param object_: The object to store
+#        @type object_: object
+#        '''
+#        # Execute store taslkets
+#        params = {
+#            'rootobject': object_,
+#            'rootobjecttype': object_type,
+#        }
+#
+#
+#        self.tasklet_engine.execute(params=params, tags=('osis', 'store',))
+#
+#
+#    def execute_filter_as_view(self, object_type, filter_, view):
+#        '''Execute a query on the store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param filter_: Filter to execute
+#        @type filter_: L{Filter}
+#        @param view: view name to return
+#        @type view: string
+#
+#        @return: OSISList formatted resultset
+#        @rtype: tuple
+#        '''
+#        params = {
+#            'rootobjecttype': object_type,
+#            'filterobject': filter_,
+#            'osisview': view,
+#        }
+#
+#        self.tasklet_engine.execute(params=params, tags=('osis','findasview'))
+#
+#        if not 'result' in params or not params['result']:
+#            return list()
+#
+#        return params['result']
+#
+#    def execute_filter(self, object_type, filter_, view):
+#        '''Execute a query on the store
+#
+#        @param object_type: Object type name
+#        @type object_type: string
+#        @param filter_: Filter to execute
+#        @type filter_: L{Filter}
+#        @param view: Optional view name to return
+#        @type view: string
+#
+#        @return: OSISList formatted resultset
+#        @rtype: tuple
+#        '''
+#        params = {
+#            'rootobjecttype': object_type,
+#            'filterobject': filter_,
+#            'osisview': view,
+#        }
+#
+#        self.tasklet_engine.execute(params=params, tags=('osis','findobject'))
+#
+#        if not 'result' in params or not params['result']:
+#            return list()
+#
+#        return params['result']
+#    
+#    @staticmethod
+#    def getFilterObject(): #pylint: disable-msg=C0103
+#        '''Create a new filter object instance'''
+#        return OsisFilterObject()
+
+#################### /HACK LOCAL CLIENT ############################
+
+
+
 class OsisClient(object):
     '''Client class to handle one root object type on a server
 
@@ -87,14 +436,14 @@ class OsisClient(object):
     def query(self, Query):
         ''' run query from OSIS server
 
-	@param query: Query to execute on OSIS server
-	@type query: string
-
-	@return: result of the query else raise error
-	@type: List of rows. Each row shall be represented as a dictionary.
-	'''
-
-	return self.transport.runQuery(Query)
+    	@param query: Query to execute on OSIS server
+    	@type query: string
+    
+    	@return: result of the query else raise error
+    	@type: List of rows. Each row shall be represented as a dictionary.
+    	'''
+    
+    	return self.transport.runQuery(Query)
 
     def delete(self, guid, version=None):
         '''Delete a root object with a given GUID from the OSIS server
@@ -175,16 +524,16 @@ class OsisClient(object):
             return ViewResultList(result)
 
     def findAsView(self, filter_, viewName):
-	"""
-	Perform a find/filter operation.
-	@param filter_: Filter description
-        @type filter_: OsisFilterObject
-        @param view: name of the view to return
-        @type view: string
-
-	@return: list of dicts representing the view{col: value}
-	"""
-	type_ = self._ROOTOBJECTTYPE.__name__
+    	"""
+    	Perform a find/filter operation.
+    	@param filter_: Filter description
+            @type filter_: OsisFilterObject
+            @param view: name of the view to return
+            @type view: string
+    
+    	@return: list of dicts representing the view{col: value}
+    	"""
+    	type_ = self._ROOTOBJECTTYPE.__name__
 
         result = self.transport.findAsView(type_, filter_, viewName)
 
@@ -231,6 +580,7 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
 
         self._name = name
 
+        #class AccessorImpl(OsisClient):
         class AccessorImpl(OsisClient):
             '''Implementation of an specific L{OsisClient} root object
             accessor'''
