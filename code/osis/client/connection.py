@@ -234,10 +234,14 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         @type type_: type
         '''
         logger.info('Creating root object accessor %s' % name)
-
         self._name = name
-        self._accessorimpl = clientClass
-        self._accessorimpl._ROOTOBJECTTYPE = type_
+        
+        class AccessorImpl_(clientClass):
+            '''Implementation of an specific L{OsisClient} root object
+            accessor'''
+            _ROOTOBJECTTYPE = type_
+
+        self._accessorimpl = AccessorImpl_
 
     def __get__(self, obj, type_=None): #pylint: disable-msg=W0613
         '''Retrieve the accessor from a connection object'''
