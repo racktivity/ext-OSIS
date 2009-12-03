@@ -86,15 +86,14 @@ class OsisClient(object):
 
     def query(self, Query):
         ''' run query from OSIS server
-
-	@param query: Query to execute on OSIS server
-	@type query: string
-
-	@return: result of the query else raise error
-	@type: List of rows. Each row shall be represented as a dictionary.
-	'''
-
-	return self.transport.runQuery(Query)
+    
+        @param query: Query to execute on OSIS server
+        @type query: string
+    
+        @return: result of the query else raise error
+        @type: List of rows. Each row shall be represented as a dictionary.
+        '''
+        return self.transport.runQuery(Query)
 
     def delete(self, guid, version=None):
         '''Delete a root object with a given GUID from the OSIS server
@@ -175,19 +174,17 @@ class OsisClient(object):
             return ViewResultList(result)
 
     def findAsView(self, filter_, viewName):
-	"""
-	Perform a find/filter operation.
-	@param filter_: Filter description
+        """
+        Perform a find/filter operation.
+        @param filter_: Filter description
         @type filter_: OsisFilterObject
         @param view: name of the view to return
         @type view: string
 
-	@return: list of dicts representing the view{col: value}
-	"""
-	type_ = self._ROOTOBJECTTYPE.__name__
-
+        @return: list of dicts representing the view{col: value}
+        """
+        type_ = self._ROOTOBJECTTYPE.__name__
         result = self.transport.findAsView(type_, filter_, viewName)
-
         return result
 
 class OsisConnection(object):
@@ -209,7 +206,11 @@ class OsisConnection(object):
         self.transport = transport
         self.serializer = serializer
 
-
+class AccessorImpl(OsisClient):
+        '''Implementation of an specific L{OsisClient} root object
+        accessor'''
+        pass
+        
 class RootObjectAccessor(object): #pylint: disable-msg=R0903
     '''Descriptor returning a correct L{OsisClient} instance for every root
     object exposed on L{OsisConnection}
@@ -219,7 +220,9 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
     provide the necessary methods to retrieve the corresponding root objects
     from the server.
     '''
-    def __init__(self, name, type_):
+    
+
+    def __init__(self, name, type_, clientClass=AccessorImpl):
         '''Initialize a new root object accessor
 
         @param name: Name of the accessor ('clients' in 'connection.clients')
@@ -228,15 +231,14 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         @type type_: type
         '''
         logger.info('Creating root object accessor %s' % name)
-
         self._name = name
-
-        class AccessorImpl(OsisClient):
+        
+        class AccessorImpl_(clientClass):
             '''Implementation of an specific L{OsisClient} root object
             accessor'''
             _ROOTOBJECTTYPE = type_
 
-        self._accessorimpl = AccessorImpl
+        self._accessorimpl = AccessorImpl_
 
     def __get__(self, obj, type_=None): #pylint: disable-msg=W0613
         '''Retrieve the accessor from a connection object'''
@@ -249,7 +251,7 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         return accessor
 
 
-def update_rootobject_accessors():
+def update_rootobject_accessors(cls, clientClass):
     '''Update the L{OsisConnection} class so all root object types are
     accessible
 
@@ -262,15 +264,15 @@ def update_rootobject_accessors():
     from osis import ROOTOBJECT_TYPES as types
 
     # Remove all existing accessors
-    for attrname in dir(OsisConnection):
-        attr = OsisConnection.__dict__.get(attrname, None)
+    for attrname in dir(cls):
+        attr = cls.__dict__.get(attrname, None)
         if attr and isinstance(attr, RootObjectAccessor):
             logger.debug('Removing old type %s' % attrname)
-            delattr(OsisConnection, attrname)
+            delattr(cls, attrname)
 
     # Now add all of them again
     for type_ in types.itervalues():
         name = getattr(type_, 'OSIS_TYPE_NAME', type_.__name__.lower())
-        accessor = RootObjectAccessor(name, type_)
+        accessor = RootObjectAccessor(name, type_, clientClass)
         logger.debug('Adding new type %s' % name)
-        setattr(OsisConnection, name, accessor)
+        setattr(cls, name, accessor)

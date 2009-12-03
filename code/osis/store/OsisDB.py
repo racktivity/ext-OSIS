@@ -107,7 +107,7 @@ class OsisDB(object):
             connections = ini.getSections()
         return connections
 
-    def getConnection(self, name):
+    def getConnection(self, name, usePG8000=False):
         """
         Create an Osis connection
 
@@ -126,7 +126,7 @@ class OsisDB(object):
         
             
         
-        osisConn = OsisConnection()
+        osisConn = OsisConnection(usePG8000)
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
             q.logger.log("config file not found",3)
