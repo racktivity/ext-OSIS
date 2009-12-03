@@ -123,8 +123,7 @@ class OsisDB(object):
         if name in self._connections:
             q.logger.log('>>> Reusing connection %s' % name, 8)
             return self._connections[name]
-        
-            
+                  
         
         osisConn = OsisConnection(usePG8000)
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')

@@ -56,11 +56,9 @@ class OsisView(object):
     def buildSql(self):
         fields = []
         for col in self.columns.itervalues():
-            fields.append(col.sqlString())
-                 
+            fields.append(col.sqlString())                 
         fieldlist = '\n'.join(fields)[1:]
-        sql = "CREATE TABLE %s.%s ( %s ) WITH (OIDS=FALSE);"%(self.objType, self.name, fieldlist)
-        
+        sql = "CREATE TABLE %s.%s ( %s ) WITH (OIDS=FALSE);"%(self.objType, self.name, fieldlist)        
         return sql
         
 
