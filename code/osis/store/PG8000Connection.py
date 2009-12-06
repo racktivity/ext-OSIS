@@ -34,6 +34,7 @@
 # </License>
 
 import uuid
+import datetime
 
 class PG8000ConnectionResult(object):
     def __init__(self,desc,r):
