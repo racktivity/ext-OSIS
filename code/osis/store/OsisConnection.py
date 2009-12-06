@@ -39,6 +39,7 @@ import datetime, time
 
 from pymonkey import q
 from pymonkey.baseclasses.ManagementApplication import ManagementApplication
+from pymonkey.baseclasses import BaseEnumeration
 from pymonkey.db.DBConnection import DBConnection
 from OsisView import OsisView, OsisColumn, OsisType
 from OsisFilterObject import OsisFilterObject
@@ -481,8 +482,7 @@ class OsisConnectionGeneric(object):
 
     def _generateSQLCondition(self, objType, view, field, value, fieldtype):
         ret = ""
-        value = dict()
-        if isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'NoneValue':
+        if isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'None':
             ret = "%s.%s.%s is NULL"%(objType,view,field)                
         elif fieldtype in  ('uuid', 'boolean'):            
             ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
