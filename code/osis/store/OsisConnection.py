@@ -48,6 +48,21 @@ from pg import ProgrammingError
 import exceptions
 import traceback
 
+class QueryValue(BaseEnumeration):
+    """Utility class which gives string representation of Log Type """
+
+    def __init__(self, level):
+        self.level = level
+
+    def __int__(self):
+        return self.level
+    
+    def __repr__(self):
+        return str(self)
+
+QueryValue.registerItem('None', 0)
+QueryValue.finishItemRegistration()
+
 class OsisException(exceptions.Exception):
     def __init__(self, command, msg):
         msg = self.handleException(command, msg)
@@ -466,7 +481,10 @@ class OsisConnectionGeneric(object):
 
     def _generateSQLCondition(self, objType, view, field, value, fieldtype):
         ret = ""
-        if fieldtype in  ('uuid', 'boolean'):
+        value = dict()
+        if isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'NoneValue':
+            ret = "%s.%s.%s is NULL"%(objType,view,field)                
+        elif fieldtype in  ('uuid', 'boolean'):            
             ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
         elif fieldtype == 'character varying':
             ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field, self._escape(value))
