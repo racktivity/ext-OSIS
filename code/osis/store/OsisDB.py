@@ -49,7 +49,8 @@ class OsisDB(object):
 
     def __init__(self):
         #implement the borg pattern (we are one)
-        self.__dict__ = self._we_are_one
+        #self.__dict__ = self._we_are_one
+        pass
 
 
     def addConnection(self, name, ip, database, login, passwd):
