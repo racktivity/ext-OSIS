@@ -140,8 +140,8 @@ class OsisDB(object):
         osisConn.connect(ip, database, login, passwd)
         
         # Cache connection
-        q.logger.log('>>> Caching connection %s' % name, 8)
-        self._connections[name] = osisConn
+        #q.logger.log('>>> Caching connection %s' % name, 8)
+        #self._connections[name] = osisConn
         
         return osisConn
 
