@@ -487,7 +487,7 @@ class OsisConnectionGeneric(object):
         elif fieldtype in  ('uuid', 'boolean'):            
             ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
         elif fieldtype == 'character varying':
-            ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field, self._escape(value))
+            ret = "%s.%s.%s = '%s'"%(objType,view,field, self._escape(value))
         else:
             if q.basetype.integer.check(value) or q.basetype.float.check(value):
                 ret = "%s.%s.%s = %s"%(objType,view,field,value)
