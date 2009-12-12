@@ -33,6 +33,11 @@ class OsisConnectionConfig(ConfigManagementItem):
         from osis.model.serializers import ThriftSerializer
         from osis.client.xmlrpc import XMLRPCTransport
         from osis.client import OsisConnection
+        if self.params.has_key('login'):
+            transporturl = 'http://%s:%s@%s:%s/%s'%(self.params['login'], self.params['passwd'], self.params['server'], self.params['port'], self.params['path'])
+        else:
+            transporturl = 'http://%s:%s/%s'%(self.params['server'], self.params['port'], self.params['path'])
+        transport = XMLRPCTransport(transporturl, self.params['service'])
         transport = XMLRPCTransport('http://%s:%s/%s'%(self.params['server'], self.params['port'], self.params['path']), self.params['service'])
         connection = OsisConnection(transport, ThriftSerializer)
 
