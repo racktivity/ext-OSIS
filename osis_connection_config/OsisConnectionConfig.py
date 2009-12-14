@@ -14,9 +14,15 @@ class OsisConnectionConfig(ConfigManagementItem):
         self.dialogAskInteger('port', 'Enter port of the Application Server', 80)
         self.dialogAskString('path', 'Enter URL path of the XML-RPC transport of the Application Server', '/appserver/xmlrpc/')
         self.dialogAskString('service', 'Enter name of the service', 'osis_service')
+                    
         defaultDir = q.system.fs.joinPaths(q.dirs.baseDir, 'libexec','osis')
         self.params['model_path'] = self.params['model_path'] if 'model_path' in self.params else defaultDir
         self.dialogAskString('model_path', 'Enter dir path of osis model', defaultDir)
+        
+        self.dialogAskString('login', 'Enter customer login (optional)')
+        self.params['passwd'] = self.params['passwd'] if 'passwd' in self.params else ''
+        if self.params['login']:
+            self.dialogAskPassword('passwd', 'Enter customer password (optional)')
 
     def show(self):
         # Here we do not want to show the password, so a customized show() method
@@ -33,7 +39,7 @@ class OsisConnectionConfig(ConfigManagementItem):
         from osis.model.serializers import ThriftSerializer
         from osis.client.xmlrpc import XMLRPCTransport
         from osis.client import OsisConnection
-        if self.params.has_key('login'):
+        if self.params.has_key('login') and self.params['login']:
             transporturl = 'http://%s:%s@%s:%s/%s'%(self.params['login'], self.params['passwd'], self.params['server'], self.params['port'], self.params['path'])
         else:
             transporturl = 'http://%s:%s/%s'%(self.params['server'], self.params['port'], self.params['path'])
