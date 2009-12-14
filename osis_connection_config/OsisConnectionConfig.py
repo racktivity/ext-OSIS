@@ -38,7 +38,6 @@ class OsisConnectionConfig(ConfigManagementItem):
         else:
             transporturl = 'http://%s:%s/%s'%(self.params['server'], self.params['port'], self.params['path'])
         transport = XMLRPCTransport(transporturl, self.params['service'])
-        transport = XMLRPCTransport('http://%s:%s/%s'%(self.params['server'], self.params['port'], self.params['path']), self.params['service'])
         connection = OsisConnection(transport, ThriftSerializer)
 
         return connection
