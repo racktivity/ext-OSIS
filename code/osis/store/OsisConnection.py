@@ -48,6 +48,7 @@ from osis.model.serializers import ThriftSerializer
 from pg import ProgrammingError
 import exceptions
 import traceback
+import uuid
 
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
@@ -57,7 +58,7 @@ class QueryValue(BaseEnumeration):
 
     def __int__(self):
         return self.level
-    
+
     def __repr__(self):
         return str(self)
 
@@ -80,35 +81,26 @@ class _OsisPGTypeConverter(object):
         self._pgType2pyType = {}
         self._pgType2pyType["integer"] = "int"
         self._pgType2pyType["character varying"] = "str"
-        self._pgType2pyType["uuid"] = "uuid"
+	self._pgType2pyType["text"] = "str"
         self._pgType2pyType["timestamp without time zone"] = "datetime"
-        self._pgType2pyType["boolean"] = "bool"
         self._pgType2pyType["ARRAY"] = "hex"
 
     def convertType(self, pgType):
-        return self._pgType2pyType[pgType]
+	if not pgType in ('bool', 'str', 'datetime', 'date', 'int', 'uuid'):
+	    return self._pgType2pyType[pgType]
+	return pgType
 
     def convertValue(self, pgType, pgValue):
         pyType = self.convertType(pgType)
-        
-        if pgType == 'boolean':
+	if pgValue == None: return ""
+        if pgType in  ('boolean', 'bool'):
             if pgValue.__class__ == bool:
-                return pgValue 
+                return pgValue
             if 'f' in pgValue:
                 return False
             elif 't' in pgValue:
                 return True
         return pgValue
-
-    def convertToPg(self, pyType, value):
-        if not value:
-            if pyType == 'integer':
-                value =  0
-            elif pyType == 'bool':
-                value =False
-        #else:
-            #return eval("%s(%s)"%(pyType, pgValue))
-
 
 osisPGTypeConverter = _OsisPGTypeConverter()
 
@@ -151,12 +143,11 @@ class OsisConnectionGeneric(object):
         @param version : unique version for the given guid
         """
         if not version:
-            q.logger.log("select * from only %s.%s where guid='%s'"%(objType, viewName, guid) ,5)
-            result = self._dbConn.sqlexecute("select * from only %s.%s where guid='%s'"%(objType, viewName, guid)).dictresult()
+	    sql = "select * from only %s.%s where guid='%s'"%(objType, viewName, guid)
         else:
-            q.logger.log("select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version) ,5)
-            result = self._dbConn.sqlexecute("select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version)).dictresult()
+	    sql ="select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version)
 
+	result = self.__executeQuery(sql)
         if result:
             return result[0] > 0
         return False
@@ -172,17 +163,17 @@ class OsisConnectionGeneric(object):
                          If specified, only the mentioned version will be retrieved,
                          If ommited, only the active version is retrieved !
         """
-        print "OSIS.getObject"
         if not version:
-            result = self._dbConn.sqlexecute("select * from only %s.main where guid='%s'"%(objType,guid)).dictresult()
+	    sql = "select * from only %s.main where guid='%s'"%(objType,guid)
             errorStr = '%s with guid %s not found.'%(objType, guid)
         else:
-            result = self._dbConn.sqlexecute("select * from %s.main where guid='%s' and version = '%s'"%(objType,guid, version)).dictresult()
+	    sql = "select * from %s.main where guid='%s' and version = '%s'"%(objType,guid, version)
             errorStr = '%s with guid %s and version %s not found.'%(objType, guid, version)
+
+	result = self.__executeQuery(sql)
         if not result:
             q.eventhandler.raiseCriticalError(errorStr)
         else:
-            print result
             result =  result[0]['data'][1:-1]
             return result.decode('hex')
 
@@ -197,10 +188,7 @@ class OsisConnectionGeneric(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
         try:
-            result= self._dbConn.sqlexecute(query)
-            if result:
-                return result.dictresult()
-            return dict()
+	    return self.__executeQuery(query)
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
@@ -214,9 +202,11 @@ class OsisConnectionGeneric(object):
         """
         if(self.objectExists(objType, guid, version)):
             if not version:
-                self._dbConn.sqlexecute("delete from %s.main where guid='%s'"%(objType,guid))
+		sql = "delete from %s.main where guid='%s'"%(objType,guid)
             else:
-                self._dbConn.sqlexecute("delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version))
+		sql = "delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version)
+
+	    self.__executeQuery(sql, False)
             return True
         else:
             if not version:
@@ -252,19 +242,19 @@ class OsisConnectionGeneric(object):
 
         @param objTypeName : the name of the type to create
         """
-        if not self.schemeExists(objTypeName):
-            q.logger.log("Creating object schema in database" ,3)
-            self._dbConn.sqlexecute('CREATE SCHEMA %s'%objTypeName)
-            q.logger.log("Creating object main table in database" ,3)
-            self._dbConn.sqlexecute('CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName)
-            q.logger.log("Creating object main archive table in database" ,3)
-            self._dbConn.sqlexecute('CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName})
-            q.logger.log("Creating delete rule in database" ,3)
-            self._dbConn.sqlexecute('CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName})
-            q.logger.log("Creating update rule in database" ,3)
-            self._dbConn.sqlexecute('CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName})
-        else:
-            q.logger.log("ObjectType %s already exists"%objTypeName ,3)
+        if self.schemeExists(objTypeName):
+	    q.logger.log("ObjectType %s already exists"%objTypeName ,3)
+	    return
+
+	sqls = ['CREATE SCHEMA %s'%objTypeName, \
+		'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName, \
+		'CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName},\
+		'CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},\
+		'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName}]
+
+	for sql in sqls:
+	    self.__executeQuery(sql, False)
+
     def schemeExists(self, name):
         """
         Checks if the schema with the supplied name exists
@@ -272,7 +262,7 @@ class OsisConnectionGeneric(object):
         @param name : name of the schema to check
         """
         sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'"%name
-        result = self._dbConn.sqlexecute(sql).dictresult()
+        result = self.__executeQuery(sql)
         if result:
             return True
         else:
@@ -286,7 +276,7 @@ class OsisConnectionGeneric(object):
         @param viewname : name of the view to check
         """
         sql =  "select distinct schemaname, tablename from pg_tables where schemaname = '%s' and tablename = '%s'"%(objType, viewname)
-        result = self._dbConn.sqlexecute(sql).dictresult()
+        result = self.__executeQuery(sql)
         if result:
             return True
         else:
@@ -304,7 +294,7 @@ class OsisConnectionGeneric(object):
         obj = obj.encode('hex')
         query = "insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj)
         try:
-            self._dbConn.sqlexecute(query)
+	    self.__executeQuery(query, False)
         except ProgrammingError, ex:
             raise OsisException(query, ex)
         return data
@@ -320,7 +310,7 @@ class OsisConnectionGeneric(object):
         obj = obj.encode('hex')
         query = "update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid)
         try:
-            self._dbConn.sqlexecute(query)
+	    self.__executeQuery(query, False)
         except ProgrammingError, ex:
             raise OsisException(query, ex)
         return data
@@ -349,19 +339,21 @@ class OsisConnectionGeneric(object):
         else:
             sql = "select guid from only %s.%s"%(objType, 'main')
 
-        rawdata = self._dbConn.sqlexecute(sql).dictresult()
+        rawdata = self.__executeQuery(sql)
+
         for row in rawdata:
             results.append(row['guid'])
 
         for item in filterobject.filters:
             view = item.keys()[0]
             columns = self._getColumns(objType, view)
-            field = item.values()[0].keys()[0]
-            fieldtype = [column[1] for column in columns if column[0] == field][0]
-            fieldvalue = item.values()[0].values()[0]
-            q.logger.log("Process Filter : (%s.%s = %s)"%(view, field, fieldvalue) ,3)
+	    value = item.get(view)
+            field = value.keys()[0]
+	    fieldtype = columns.get(field, None)
+	    if not fieldtype:raise OsisException('Column %s does not exist in view %s.%s'%(field, objType, view))
+            fieldvalue = value.get(field)
             results = self._getFilterResults(objType, view, field , fieldvalue, fieldtype, results)
-        return results
+	return list(set(results))
 
     def objectsFindAsView(self, objType, filterObject, viewName):
         """
@@ -398,7 +390,7 @@ class OsisConnectionGeneric(object):
 
         @param view : Osisview object to create on the database
         """
-        self._dbConn.sqlexecute(view.buildSql())
+	self.__executeQuery(view.buildSql(), False)
 
 
     def viewDestroy(self, objType, viewName):
@@ -411,7 +403,8 @@ class OsisConnectionGeneric(object):
             q.eventhandler.raiseCriticalError('%s.%s not found.'%(objType, viewName))
             return
 
-        self._dbConn.sqlexecute('DROP TABLE %s.%s CASCADE'%(objType, viewName))
+	sql = 'DROP TABLE %s.%s CASCADE'%(objType, viewName)
+	self.__executeQuery(sql, False)
         return True
 
     def viewDelete(self, objType, viewName, guid, versionguid=None):
@@ -427,10 +420,11 @@ class OsisConnectionGeneric(object):
         """
 
         if not versionguid:
-            self._dbConn.sqlexecute("delete from %s.%s where guid='%s'"%(objType, viewName, guid))
+	    sql = "delete from %s.%s where guid='%s'"%(objType, viewName, guid)
         else:
-            self._dbConn.sqlexecute("delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, guid, versionguid))
+	    sql = "delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, guid, versionguid)
 
+	self.__executeQuery(sql, False)
         return True
 
 
@@ -444,8 +438,6 @@ class OsisConnectionGeneric(object):
         @param versionguid : unique identifier indicating the version of the object
         @param fields : dict containing the field:values
         """
-
-        columns = self._getColumns(objType, viewName)
         fieldnames = "guid, version, viewguid"
         values = "'%s', '%s', '%s'"%(guid, version, q.base.idgenerator.generateGUID())
 
@@ -461,7 +453,7 @@ class OsisConnectionGeneric(object):
 
         sql = "insert into %s.%s (%s) VALUES (%s)"%(objType, viewName, fieldnames, values)
         try:
-            self._dbConn.sqlexecute(sql)
+	    self.__executeQuery(sql, False)
         except ProgrammingError, ex:
             raise OsisException(sql, ex)
 
@@ -474,19 +466,13 @@ class OsisConnectionGeneric(object):
             return value
         return "'%s'"% value
 
-    def _checkValues(self, pyValue):
-        if pyValue == None:
-            return 'NULL'
-        return pyValue
-        #return _OsisPGTypeConverter().convertToPg(pyType, pyValue)
-
     def _generateSQLCondition(self, objType, view, field, value, fieldtype):
         ret = ""
-        if isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'None':
-            ret = "%s.%s.%s is NULL"%(objType,view,field)                
-        elif fieldtype in  ('uuid', 'boolean'):            
+        if (isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'None') or (fieldtype in ('uuid') and value in (None, "")):
+            ret = "%s.%s.%s is NULL"%(objType,view,field)
+        elif fieldtype in  ('uuid', 'bool',):
             ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
-        elif fieldtype == 'character varying':
+        elif fieldtype in ('character varying', 'text'):
             ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field, self._escape(value))
         else:
             if q.basetype.integer.check(value) or q.basetype.float.check(value):
@@ -494,25 +480,18 @@ class OsisConnectionGeneric(object):
         return ret
 
     def _getViewResultAsDict(self, objType, view, results):
-        columnNames = self._getColumns(objType, view)
         if not results:
             return list()
 
+	columns = self._getColumns(objType, view)
         dataFound = self._getViewData(objType, view, results)
 
-        result = list()
-        for data in dataFound:
-            resultDict = dict()
-            #resultDict = resultDict.fromkeys(columnNames)
-            for index in xrange(len(columnNames)):
-                columnName = columnNames[index][0]
-                columnType = columnNames[index][1]
-                if not data[index] == None:
-                    resultDict[columnName] = _OsisPGTypeConverter().convertValue(columnType, data[index])
-                else:
-                    resultDict[columnName] = ''
+	result = list()
+	for data in dataFound:
+	    for columnName in data:
+		data[columnName] = _OsisPGTypeConverter().convertValue(columns[columnName], data[columnName])
 
-            result.append(resultDict)
+            result.append(data)
 
         return result
 
@@ -520,8 +499,8 @@ class OsisConnectionGeneric(object):
         columns = self._getColumns(objType, view)
         coldef = list()
 
-        for col in columns:
-            coldef.append((col[0], osisPGTypeConverter.convertType(col[1])))
+        for colName, colType in columns.iteritems():
+	    coldef.append((colName, osisPGTypeConverter.convertType(colType)))
 
 
         #no results to retrieve, just return the view definition
@@ -536,13 +515,7 @@ class OsisConnectionGeneric(object):
 
 
     def _getColumns(self, objType, view):
-        colList= """
-        select column_name, data_type
-           from information_schema.columns
-           where table_name = '%s' and table_schema = '%s'
-        """%(view, objType.lower())
-
-        columns = self._dbConn.sqlexecute(colList).getresult()
+	columns = self._dbConn.listColumns(view, objType)
         return columns
 
     def _getViewData(self, objType, view, results):
@@ -566,7 +539,7 @@ class OsisConnectionGeneric(object):
                 'viewversion':viewversion,
                 'guids':guids}
 
-        rawdata = self._dbConn.sqlexecute(sql).getresult()
+	rawdata = self.__executeQuery(sql)
         return rawdata
 
     def _getFilterResults(self, objType, view, filterField, filterValue, fieldType, results):
@@ -602,7 +575,7 @@ class OsisConnectionGeneric(object):
                 'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue, fieldType),
                 'guids':guids}
 
-        rawdata = self._dbConn.sqlexecute(sql).dictresult()
+	rawdata = self.__executeQuery(sql)
         for row in rawdata:
             guidList.append(row['guid'])
 
@@ -612,20 +585,26 @@ class OsisConnectionGeneric(object):
         pgstr = pgstr.replace("'", "\\'")
         return pgstr
 
+
+    def __executeQuery(self, query, getdict= True):
+	query = self._dbConn.sqlexecute(query)
+	if getdict and query:
+	    return query.dictresult()
+
 class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
         self._dbConn = DBConnection(ip, db, login, passwd)
         self._login = login
+	return dict()
 
 class OsisConnectionPG8000(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
         from PG8000Connection import PG8000Connection
         self._dbConn = PG8000Connection(ip, db, login, passwd)
         self._login = login
-
 def OsisConnection(usePG8000=False):
     # If stackless uses pg8000
-    if usePG8000:        
+    if usePG8000:
         return OsisConnectionPG8000()
     else:
         return OsisConnectionPYmonkeyDBConnection()
