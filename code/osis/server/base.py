@@ -238,8 +238,11 @@ class BaseServer(object):
             raise UnknownObjectTypeException('Unknown object type %s' % \
                                              object_type)
 
-        filter_ = Filter()
-        filter_.filters = filters
+        if isinstance(filters,Filter):
+            filter_=filters
+        else:
+            filter_ = Filter()
+            filter_.filters = filters
 
         result = self.execute_filter(object_type, filter_, view)
 
