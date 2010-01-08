@@ -350,7 +350,7 @@ class OsisConnectionGeneric(object):
 	    value = item.get(view)
             field = value.keys()[0]
 	    fieldtype = columns.get(field, None)
-	    if not fieldtype:raise OsisException('Column %s does not exist in view %s.%s'%(field, objType, view))
+	    if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, objType, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
             fieldvalue = value.get(field)
             results = self._getFilterResults(objType, view, field , fieldvalue, fieldtype, results)
 	return list(set(results))
@@ -472,11 +472,15 @@ class OsisConnectionGeneric(object):
             ret = "%s.%s.%s is NULL"%(objType,view,field)
         elif fieldtype in  ('uuid', 'bool',):
             ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
-        elif fieldtype in ('character varying', 'text'):
-            ret = "%s.%s.%s like '%%%s%%'"%(objType,view,field, self._escape(value))
+        elif fieldtype in ('character varying', 'text', 'datetime'):
+	    field = '%s.%s.%s'%(objType,view,field)
+	    if fieldtype in ('datetime'):
+		field = 'cast(%s as varchar)'%field
+            ret = "%s like '%%%s%%'"%(field, self._escape(value))
         else:
             if q.basetype.integer.check(value) or q.basetype.float.check(value):
                 ret = "%s.%s.%s = %s"%(objType,view,field,value)
+
         return ret
 
     def _getViewResultAsDict(self, objType, view, results):
