@@ -351,8 +351,8 @@ class OsisConnectionGeneric(object):
             field = value.keys()[0]
 	    fieldtype = columns.get(field, None)
 	    if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, objType, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
-            fieldvalue = value.get(field)
-            results = self._getFilterResults(objType, view, field , fieldvalue, fieldtype, results)
+            fieldvalue, exactMatch = value.get(field)
+            results = self._getFilterResults(objType, view, field , fieldvalue, fieldtype, results, exactMatch)
 	return list(set(results))
 
     def objectsFindAsView(self, objType, filterObject, viewName):
@@ -466,7 +466,7 @@ class OsisConnectionGeneric(object):
             return value
         return "'%s'"% value
 
-    def _generateSQLCondition(self, objType, view, field, value, fieldtype):
+    def _generateSQLCondition(self, objType, view, field, value, fieldtype, exactMatch=False):
         ret = ""
         if (isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'None') or (fieldtype in ('uuid') and value in (None, "")):
             ret = "%s.%s.%s is NULL"%(objType,view,field)
@@ -476,7 +476,10 @@ class OsisConnectionGeneric(object):
 	    field = '%s.%s.%s'%(objType,view,field)
 	    if fieldtype in ('datetime'):
 		field = 'cast(%s as varchar)'%field
-            ret = "%s like '%%%s%%'"%(field, self._escape(value))
+	    if exactMatch:
+		ret = "%s = '%s'"%(field, self._escape(value))
+	    else:
+		ret = "%s like '%%%s%%'"%(field, self._escape(value))
         else:
             if q.basetype.integer.check(value) or q.basetype.float.check(value):
                 ret = "%s.%s.%s = %s"%(objType,view,field,value)
@@ -546,7 +549,7 @@ class OsisConnectionGeneric(object):
 	rawdata = self.__executeQuery(sql)
         return rawdata
 
-    def _getFilterResults(self, objType, view, filterField, filterValue, fieldType, results):
+    def _getFilterResults(self, objType, view, filterField, filterValue, fieldType, results, exactMatch=False):
         #no results left to filter on
         if not results:
             return []
@@ -576,7 +579,7 @@ class OsisConnectionGeneric(object):
                 'viewguid':viewguid,
                 'mainversion':mainversion,
                 'viewversion':viewversion,
-                'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue, fieldType),
+                'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue, fieldType, exactMatch),
                 'guids':guids}
 
 	rawdata = self.__executeQuery(sql)
