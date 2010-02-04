@@ -36,14 +36,12 @@
 '''Main package for the OSIS library'''
 
 import logging
-from client.connection import AccessorImpl
-from client.connection import OsisConnection
 
 logger = logging.getLogger('osis') #pylint: disable-msg=C0103
 
 ROOTOBJECT_TYPES = dict()
 
-def init(model_path, connectionClass=OsisConnection, clientClass=AccessorImpl):
+def init(model_path):
     '''Initialize the OSIS library
 
     @param model_path: Folder path containing all root object model modules
@@ -60,7 +58,7 @@ def init(model_path, connectionClass=OsisConnection, clientClass=AccessorImpl):
             raise RuntimeError('Duplicate root object type %s' % name)
         ROOTOBJECT_TYPES[name] = type_
 
-    osis.client.connection.update_rootobject_accessors(connectionClass, clientClass)
+    osis.client.connection.update_rootobject_accessors()
 
 
 # Set up binding to PyMonkey logging

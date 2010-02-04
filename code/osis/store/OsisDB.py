@@ -49,11 +49,12 @@ class OsisDB(object):
 
     def __init__(self):
         #implement the borg pattern (we are one)
-        #self.__dict__ = self._we_are_one
-        pass
+        self.__dict__ = self._we_are_one
 
 
-    def addConnection(self, name, ip, database, login, passwd):
+    def addConnection(self, name,
+            jdbip, jdbnamespace, jdblogin, jdbpasswd, jdbmaster='', jdbport=2181,
+            pgsip="127.0.0.1", pgsdatabase=None, pgslogin=None, pgspasswd=None ):
         """
         Add an Osis connection to the configuration
 
@@ -63,6 +64,11 @@ class OsisDB(object):
         @param login : login for the db server
         @param passwd : password for the db server
         """
+
+        if not pgsdatabase: pgsdatabase = jdbnamespace
+        if not pgslogin: pgslogin = jdblogin
+        if not pgspasswd: pgspasswd = jdbpasswd
+
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
             ini = q.tools.inifile.new(iniFile)
@@ -72,10 +78,17 @@ class OsisDB(object):
         if not ini.checkSection(name):
             ini.addSection(name)
 
-        ini.addParam(name,'ip',ip)
-        ini.addParam(name,'database',database)
-        ini.addParam(name,'login', login)
-        ini.addParam(name,'passwd', passwd)
+        ini.addParam(name,'ip', jdbip)
+        ini.addParam(name,'database', jdbnamespace)
+        ini.addParam(name,'login', jdblogin)
+        ini.addParam(name,'passwd', jdbpasswd)
+        ini.addParam(name,'master', jdbmaster)
+        ini.addParam(name,'port', jdbport)
+
+        ini.addParam(name,'pgsip', pgsip)
+        ini.addParam(name,'pgsdatabase', pgsdatabase)
+        ini.addParam(name,'pgslogin', pgslogin)
+        ini.addParam(name,'pgspasswd', pgspasswd)
 
         ini.write()
 
@@ -108,13 +121,12 @@ class OsisDB(object):
             connections = ini.getSections()
         return connections
 
-    def getConnection(self, name, usePG8000=False):
+    def getConnection(self, name):
         """
         Create an Osis connection
 
         @param name : connection name
         """
-        
         # Initialize connections if not available
         if not hasattr(self, '_connections'):
             q.logger.log('>>> Initializing connections', 8)
@@ -124,9 +136,10 @@ class OsisDB(object):
         if name in self._connections:
             q.logger.log('>>> Reusing connection %s' % name, 8)
             return self._connections[name]
-                  
         
-        osisConn = OsisConnection(usePG8000)
+            
+        
+        osisConn = OsisConnection()
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
             q.logger.log("config file not found",3)
@@ -135,14 +148,38 @@ class OsisDB(object):
             ini = q.tools.inifile.open(iniFile)
 
         ip = ini.getValue(name,'ip')
-        database = ini.getValue(name,'database')
+        namespace = ini.getValue(name,'database')
         login = ini.getValue(name,'login')
         passwd = ini.getValue(name,'passwd')
-        osisConn.connect(ip, database, login, passwd)
+        master = ini.getValue(name,'master')
+        port = ini.getValue(name,'port')
+
+        try:
+            pgsip = ini.getValue(name,'pgsip')
+        except:
+            pgsip = "127.0.0.1"
+
+        try:
+            pgsdatabase = ini.getValue(name,'pgsdatabase')
+        except:
+            pgsdatabase = namespace
+
+        try:
+            pgslogin = ini.getValue(name,'pgslogin')
+        except:
+            pgslogin = login
+
+        try:
+            pgspasswd = ini.getValue(name,'pgspasswd')
+        except:
+            pgspasswd = passwd
+        
+        osisConn.connect(ip, namespace, login, passwd, master, port,
+                        pgsip, pgsdatabase, pgslogin, pgspasswd)
         
         # Cache connection
-        #q.logger.log('>>> Caching connection %s' % name, 8)
-        #self._connections[name] = osisConn
+        q.logger.log('>>> Caching connection %s' % name, 8)
+        self._connections[name] = osisConn
         
         return osisConn
 

@@ -67,7 +67,11 @@ class OsisServer(BaseServer):
         @param tasklet_path: Container path of OSIS tasklets
         @type tasklet_path: string
         '''
-        BaseServer.__init__(self, tasklet_path)
+        BaseServer.__init__(self)
+
+        tasklet_path = tasklet_path or \
+                os.path.join(os.path.dirname(__file__), 'tasklets')
+        self.tasklet_engine = q.getTaskletEngine(tasklet_path)
 
     @q.manage.applicationserver.expose
     def get(self, objectType, guid, serializer):
@@ -119,8 +123,15 @@ class OsisServer(BaseServer):
         @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
-        
-        return BaseServer.runQuery(self, query)
+
+	# Set up tasklet call parameters
+    	params = {'query': query}
+    	self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
+	if not 'result' in params or not params['result']:
+            return list()
+
+        return params['result']
+
 
     @q.manage.applicationserver.expose
     def delete(self, objectType, guid):
@@ -133,9 +144,21 @@ class OsisServer(BaseServer):
 
         @return: True or False, according as deletion succeeds or fails.
         '''
-        
-        return BaseServer.delete(self, objectType, guid)
-        
+        # Set up tasklet call parameters
+        params = {
+             'rootobjectguid': guid,
+             'rootobjecttype': objectType,
+             'rootobjectversionguid': None
+        }
+
+        self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
+
+        if not 'result' in params or not params['result']:
+            return False
+
+        return params['result']
+
+
     @q.manage.applicationserver.expose
     def delete_version(self, objectType, guid, version):
         '''Delete a specific version of an object from the OSIS object store
@@ -149,9 +172,21 @@ class OsisServer(BaseServer):
 
         @return: True or False, according as deletion succeeds or fails.
         '''
-        
-        return BaseServer.delete_version(self, objectType, guid, version)
-    
+        # Set up tasklet call parameters
+        params = {
+            'rootobjectguid': guid,
+            'rootobjecttype': objectType,
+            'rootobjectversionguid': version
+        }
+
+        self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
+
+
+        if not 'result' in params or not params['result']:
+            return False
+
+        return params['result']
+
     @q.manage.applicationserver.expose
     def put(self, objectType, data, serializer):
         '''Save an object in the OSIS object store
@@ -176,6 +211,7 @@ class OsisServer(BaseServer):
         @param view: view to return
         """
         return BaseServer.find(self, objectType, filters, view)
+
 
     @q.manage.applicationserver.expose
     def findAsView(self, objectType, filters, view):
@@ -213,9 +249,22 @@ class OsisServer(BaseServer):
 
         @raise ObjectNotFoundException: The object could not be found
         '''
-        
-        return BaseServer.get_object_from_store(self, object_type, guid, preferred_serializer, version)
-        
+        # Set up tasklet call parameters
+        params = {
+            'rootobjectguid': guid,
+            'rootobjecttype': object_type,
+            'rootobjectversionguid': version,
+        }
+
+        # Call tasklets. In the end, 'rootobject' should be in params
+        self.tasklet_engine.execute(params=params, tags=('osis', 'get', ))
+
+        if not 'rootobject' in params:
+            raise ObjectNotFoundException('Object %s with guid %s '
+                                          'not found' % (object_type, guid))
+
+        return params['rootobject'], None
+
     def put_object_in_store(self, object_type, object_):
         '''Store an object in the store
 
@@ -224,12 +273,18 @@ class OsisServer(BaseServer):
         @param object_: The object to store
         @type object_: object
         '''
-        
-        BaseServer.put_object_in_store(self, object_type, object_)
+        # Execute store taslkets
+        params = {
+            'rootobject': object_,
+            'rootobjecttype': object_type,
+        }
+
+
+        self.tasklet_engine.execute(params=params, tags=('osis', 'store',))
 
 
     def execute_filter_as_view(self, object_type, filter_, view):
-        '''Execute a query on the store
+	'''Execute a query on the store
 
         @param object_type: Object type name
         @type object_type: string
@@ -241,9 +296,18 @@ class OsisServer(BaseServer):
         @return: OSISList formatted resultset
         @rtype: tuple
         '''
-        
-        return BaseServer.execute_filter_as_view(self, object_type, filter_, view)
-        
+	params = {
+            'rootobjecttype': object_type,
+            'filterobject': filter_,
+            'osisview': view,
+        }
+
+        self.tasklet_engine.execute(params=params, tags=('osis','findasview'))
+
+        if not 'result' in params or not params['result']:
+            return list()
+
+        return params['result']
 
     def execute_filter(self, object_type, filter_, view):
         '''Execute a query on the store
@@ -258,6 +322,15 @@ class OsisServer(BaseServer):
         @return: OSISList formatted resultset
         @rtype: tuple
         '''
-        
-        return BaseServer.execute_filter(self, object_type, filter_, view)
-        
+        params = {
+            'rootobjecttype': object_type,
+            'filterobject': filter_,
+            'osisview': view,
+        }
+
+        self.tasklet_engine.execute(params=params, tags=('osis','findobject'))
+
+        if not 'result' in params or not params['result']:
+            return list()
+
+        return params['result']

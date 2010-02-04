@@ -148,7 +148,7 @@ class Enumeration(String):
                     'Only objects of type %s can be assigned '
                     'to this field' % str(self.VALID_TYPE))
 
-            value = value._pm_enumeration_name if value else None
+            value = str(value) if value else None
 
 
         String.__set__(self, obj, value)
