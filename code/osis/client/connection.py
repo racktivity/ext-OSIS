@@ -86,10 +86,10 @@ class OsisClient(object):
 
     def query(self, Query):
         ''' run query from OSIS server
-    
+
         @param query: Query to execute on OSIS server
         @type query: string
-    
+
         @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
@@ -210,7 +210,7 @@ class AccessorImpl(OsisClient):
         '''Implementation of an specific L{OsisClient} root object
         accessor'''
         pass
-        
+
 class RootObjectAccessor(object): #pylint: disable-msg=R0903
     '''Descriptor returning a correct L{OsisClient} instance for every root
     object exposed on L{OsisConnection}
@@ -220,7 +220,7 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
     provide the necessary methods to retrieve the corresponding root objects
     from the server.
     '''
-    
+
 
     def __init__(self, name, type_, clientClass=AccessorImpl):
         '''Initialize a new root object accessor
@@ -232,7 +232,7 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         '''
         logger.info('Creating root object accessor %s' % name)
         self._name = name
-        
+
         class AccessorImpl_(clientClass):
             '''Implementation of an specific L{OsisClient} root object
             accessor'''
@@ -263,14 +263,14 @@ def update_rootobject_accessors(cls, clientClass):
 
     from osis import ROOTOBJECT_TYPES as types
 
-    # Remove all existing accessors
+    ## Remove old accessors
     for attrname in dir(cls):
         attr = cls.__dict__.get(attrname, None)
-        if attr and isinstance(attr, RootObjectAccessor):
+        if attr and isinstance(attr, RootObjectAccessor) and not any([attrname == getattr(type_,  'OSIS_TYPE_NAME', type_.__name__.lower()) for type_ in types.itervalues()]):
             logger.debug('Removing old type %s' % attrname)
             delattr(cls, attrname)
 
-    # Now add all of them again
+    # update accessors
     for type_ in types.itervalues():
         name = getattr(type_, 'OSIS_TYPE_NAME', type_.__name__.lower())
         accessor = RootObjectAccessor(name, type_, clientClass)
