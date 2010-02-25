@@ -58,7 +58,10 @@ class OsisView(object):
         for col in self.columns.itervalues():
             fields.append(col.sqlString())
         fieldlist = '\n'.join(fields)[1:]
-        sql = "CREATE TABLE %s.%s ( %s ) WITH (OIDS=FALSE);"%(self.objType, self.name, fieldlist)
+        sql = list()
+        sql.append("CREATE TABLE %s.%s ( %s ) WITH (OIDS=FALSE);"%(self.objType, self.name, fieldlist))
+        sql.append("CREATE INDEX guid_%(objType)s_%(name)s ON %(objType)s.%(name)s (guid)"%{'objType':self.objType, 'name':self.name})
+        sql.append("CREATE INDEX version_%(objType)s_%(name)s ON %(objType)s.%(name)s (version)"%{'objType':self.objType, 'name':self.name})
         return sql
 
 

@@ -84,6 +84,7 @@ class _OsisPGTypeConverter(object):
 	self._pgType2pyType["text"] = "str"
         self._pgType2pyType["timestamp without time zone"] = "datetime"
         self._pgType2pyType["ARRAY"] = "hex"
+	self.requiresConvert = ['boolean', 'bool']
 
     def convertType(self, pgType):
 	if not pgType in ('bool', 'str', 'datetime', 'date', 'int', 'uuid'):
@@ -250,7 +251,8 @@ class OsisConnectionGeneric(object):
 		'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName, \
 		'CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName},\
 		'CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},\
-		'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName}]
+		'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},
+		'CREATE INDEX guid_%(schema)s_main ON %(schema)s.main (guid)'%{'schema':objTypeName}, 'CREATE INDEX version_%(schema)s_main ON %(schema)s.main (version)'%{'schema':objTypeName}]
 
 	for sql in sqls:
 	    self.__executeQuery(sql, False)
@@ -344,6 +346,8 @@ class OsisConnectionGeneric(object):
         for row in rawdata:
             results.append(row['guid'])
 
+	filterQueries = dict()
+
         for item in filterobject.filters:
             view = item.keys()[0]
             columns = self._getColumns(objType, view)
@@ -352,7 +356,11 @@ class OsisConnectionGeneric(object):
 	    fieldtype = columns.get(field, None)
 	    if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, objType, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
             fieldvalue, exactMatch = value.get(field)
-            results = self._getFilterResults(objType, view, field , fieldvalue, fieldtype, results, exactMatch)
+	    query = filterQueries.get(view, list())
+	    query.append(self._generateSQLCondition(objType, view, field , fieldvalue, fieldtype, exactMatch))
+	    filterQueries[view] = query
+
+	if filterQueries:results = self._getFiltersResults(objType, filterQueries)
 	return list(set(results))
 
     def objectsFindAsView(self, objType, filterObject, viewName):
@@ -390,7 +398,8 @@ class OsisConnectionGeneric(object):
 
         @param view : Osisview object to create on the database
         """
-	self.__executeQuery(view.buildSql(), False)
+	for sql in view.buildSql():
+	    self.__executeQuery(sql, False)
 
 
     def viewDestroy(self, objType, viewName):
@@ -493,14 +502,11 @@ class OsisConnectionGeneric(object):
 	columns = self._getColumns(objType, view)
         dataFound = self._getViewData(objType, view, results)
 
-	result = list()
 	for data in dataFound:
-	    for columnName in data:
-		data[columnName] = _OsisPGTypeConverter().convertValue(columns[columnName], data[columnName])
+	    for columnName in [col for col in data if columns[col] in osisPGTypeConverter.requiresConvert]:
+		data[columnName] = osisPGTypeConverter.convertValue(columns[columnName], data[columnName])
 
-            result.append(data)
-
-        return result
+        return dataFound
 
     def _getViewResults(self, objType, view, results):
         columns = self._getColumns(objType, view)
@@ -549,44 +555,23 @@ class OsisConnectionGeneric(object):
 	rawdata = self.__executeQuery(sql)
         return rawdata
 
-    def _getFilterResults(self, objType, view, filterField, filterValue, fieldType, results, exactMatch=False):
-        #no results left to filter on
-        if not results:
-            return []
+    def _getFiltersResults(self, objType, filterQueries):
+	conditions = list()
+	sql = ""
+	for index, view in enumerate(filterQueries):
+	    conditions.extend(filterQueries[view])
+	    if index == 0:
+		firstview = view
+		sql = "select %(obj)s.%(firstview)s.guid from %(obj)s.%(firstview)s"%{'obj':objType, 'firstview':firstview}
+		continue
+	    sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':objType, 'view':view, 'firstview': firstview}
 
-        #no view specified to filter on, so just return the results
-        if not view:
-            return results
-
-        guidList = []
-
-        guids = ','.join("'%s'"%r for r in results)
-        viewname = "%s.%s"%(objType, view)
-        mainname = "%s.main"%objType
-        mainguid = "%s.guid"%mainname
-        viewguid = "%s.guid"%viewname
-        mainversion = "%s.version"%mainname
-        viewversion = "%s.version"%viewname
-
-        sql = """
-        select %(viewguid)s from %(viewname)s
-            inner join only %(mainname)s on %(mainguid)s = %(viewguid)s and %(mainversion)s = %(viewversion)s
-        where %(filterCondition)s and
-              %(viewguid)s in (%(guids)s)"""%{
-                'mainname':mainname,
-                'viewname':viewname,
-                'mainguid':mainguid,
-                'viewguid':viewguid,
-                'mainversion':mainversion,
-                'viewversion':viewversion,
-                'filterCondition':self._generateSQLCondition(objType,view,filterField, filterValue, fieldType, exactMatch),
-                'guids':guids}
-
-	rawdata = self.__executeQuery(sql)
-        for row in rawdata:
-            guidList.append(row['guid'])
-
-        return guidList
+	if not sql: return list()
+	sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \
+																			   'firstview':firstview}
+	sql += " where %s"%(" and ".join(conditions))
+	result = self.__executeQuery(sql)
+	return [row['guid'] for row in result]
 
     def _escape(self, pgstr):
         pgstr = pgstr.replace("'", "\\'")
