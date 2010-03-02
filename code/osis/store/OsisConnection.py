@@ -581,7 +581,7 @@ class OsisConnectionGeneric(object):
     def __executeQuery(self, query, getdict= True):
 	query = self._dbConn.sqlexecute(query)
 	if getdict and query:
-	    return query.dictresult()
+	    return query.dictresult() if hasattr(query, 'dictresult') else dict()
 
 class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
