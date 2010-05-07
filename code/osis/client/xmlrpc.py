@@ -101,7 +101,7 @@ class XMLRPCTransport(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
 
-	return self.proxy.runQuery(query)
+        return self.proxy.runQuery(query)
 
     def delete(self, type_, guid):
         '''Delete a serialized object from the server
@@ -181,4 +181,4 @@ class XMLRPCTransport(object):
         '''
         filter_data = filter_.filters
 
-	return self.proxy.findAsView(type_, filter_data, view)
+        return self.proxy.findAsView(type_, filter_data, view)

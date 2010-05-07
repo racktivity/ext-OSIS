@@ -58,7 +58,7 @@ class OsisClient(object):
         @type serializer: object
         '''
         self.transport = transport
-        self.serializer = serializer
+        #self.serializer = serializer
 
     def get(self, guid, version=None):
         '''Retrieve a root object with a given GUID from the OSIS server

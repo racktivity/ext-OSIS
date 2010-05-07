@@ -44,9 +44,9 @@ class OsisView(object):
         self.name = name;
         self.objType = objType;
         self.columns = {}
-        self.setCol('guid', q.enumerators.OsisType.UUID, False)
-        self.setCol('version', q.enumerators.OsisType.UUID, False)
         self.setCol('viewguid', q.enumerators.OsisType.UUID, False)
+        self.setCol('guid', q.enumerators.OsisType.UUID, False)
+        
 
     def setCol(self, name, datatype, nullable):
         if not self.columns.has_key(name):
@@ -59,9 +59,8 @@ class OsisView(object):
             fields.append(col.sqlString())
         fieldlist = '\n'.join(fields)[1:]
         sql = list()
-        sql.append("CREATE TABLE %s.%s ( %s ) WITH (OIDS=FALSE);"%(self.objType, self.name, fieldlist))
+        sql.append("CREATE TABLE %s.%s ( %s, CONSTRAINT pk_%s_viewguid PRIMARY KEY (viewguid))  WITH (OIDS=FALSE) ;"%(self.objType, self.name, fieldlist, self.name))
         sql.append("CREATE INDEX guid_%(objType)s_%(name)s ON %(objType)s.%(name)s (guid)"%{'objType':self.objType, 'name':self.name})
-        sql.append("CREATE INDEX version_%(objType)s_%(name)s ON %(objType)s.%(name)s (version)"%{'objType':self.objType, 'name':self.name})
         return sql
 
 

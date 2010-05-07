@@ -49,8 +49,8 @@ class OsisDB(object):
 
     def __init__(self):
         #implement the borg pattern (we are one)
-        #self.__dict__ = self._we_are_one
-        pass
+        self.__dict__ = self._we_are_one
+        #pass
 
 
     def addConnection(self, name, ip, database, login, passwd):
@@ -117,12 +117,12 @@ class OsisDB(object):
         
         # Initialize connections if not available
         if not hasattr(self, '_connections'):
-            q.logger.log('>>> Initializing connections', 8)
+            q.logger.log('>>> Initializing connections', 5)
             self._connections = {}
             
         # Use existing connection if available
         if name in self._connections:
-            q.logger.log('>>> Reusing connection %s' % name, 8)
+            q.logger.log('>>> Reusing connection %s' % name, 5)
             return self._connections[name]
                   
         
@@ -141,8 +141,8 @@ class OsisDB(object):
         osisConn.connect(ip, database, login, passwd)
         
         # Cache connection
-        #q.logger.log('>>> Caching connection %s' % name, 8)
-        #self._connections[name] = osisConn
+        q.logger.log('>>> Caching connection %s' % name, 5)
+        self._connections[name] = osisConn
         
         return osisConn
 
