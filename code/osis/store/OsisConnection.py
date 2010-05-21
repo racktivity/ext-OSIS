@@ -250,8 +250,8 @@ class OsisConnectionGeneric(object):
 	sqls = ['CREATE SCHEMA %s'%objTypeName, \
 		'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName, \
 		'CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName},\
-		'CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},\
-		'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},
+#		'CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},\
+#		'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},
 		'CREATE INDEX guid_%(schema)s_main ON %(schema)s.main (guid)'%{'schema':objTypeName}, 'CREATE INDEX version_%(schema)s_main ON %(schema)s.main (version)'%{'schema':objTypeName}]
 
 	for sql in sqls:
@@ -447,6 +447,9 @@ class OsisConnectionGeneric(object):
         @param versionguid : unique identifier indicating the version of the object
         @param fields : dict containing the field:values
         """
+        
+        self.viewDelete(objType, viewName, guid)
+        
         fieldnames = "guid, version, viewguid"
         values = "'%s', '%s', '%s'"%(guid, version, q.base.idgenerator.generateGUID())
 
