@@ -307,10 +307,9 @@ class OsisConnectionGeneric(object):
 
         @param data : object to update
         """
-        data.creationdate = time.strftime('%Y-%m-%d %H:%M', time.localtime())
         obj = data.serialize(ThriftSerializer)
         obj = obj.encode('hex')
-        query = "update only %s.main set guid = '%s', version = '%s', creationdate = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj, data.guid)
+        query = "update only %s.main set guid = '%s', version = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, obj, data.guid)
         try:
 	    self.__executeQuery(query, False)
         except ProgrammingError, ex:
