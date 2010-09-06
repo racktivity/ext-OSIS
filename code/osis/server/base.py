@@ -35,15 +35,17 @@
 
 '''Base (abstract) implementation of the OSIS server interface'''
 
+import os
 import logging
 
+
 from osis.server.exceptions import UnknownSerializerException, \
-    UnknownObjectTypeException
-from osis.model.serializers import SERIALIZERS
-from osis import ROOTOBJECT_TYPES
+    UnknownObjectTypeException, ObjectNotFoundException
 #TODO Move this to a more suitable place #pylint: disable-msg=W0511
 from osis.store.OsisFilterObject import OsisFilterObject as Filter
 from pymonkey import q
+from pymodel.serializers import SERIALIZERS
+from pymodel import ROOTOBJECT_TYPES
 
 logger = logging.getLogger('osis.server.base') #pylint: disable-msg=C0103
 
@@ -67,7 +69,7 @@ class BaseServer(object):
                 os.path.join(os.path.dirname(__file__), 'tasklets')
         self.tasklet_engine = q.getTaskletEngine(tasklet_path)
     
-    def _get(self, object_type, guid, version, serializer):
+    def _get(self, domain, object_type, guid, version, serializer):
         '''Helper method to retrieve a specific version of an object from the
         OSIS object store
 
@@ -83,8 +85,8 @@ class BaseServer(object):
         @return: Serialized object
         @rtype: string
         '''
-        object_, serialized = self.get_object_from_store(object_type, guid,
-                                                         serializer, version)
+        object_, serialized = self.get_object_from_store(domain, object_type, guid,
+                                                         serializer)
 
         logger.debug('[GET] Object %s version %s type %s found' % \
                      (guid, version, object_type))
@@ -101,7 +103,7 @@ class BaseServer(object):
         return serialized
 
 
-    def get(self, object_type, guid, serializer):
+    def get(self, domain, object_type, guid, serializer):
         '''Retrieve an object from the OSIS object store
 
         @param object_type: Object type name
@@ -117,29 +119,9 @@ class BaseServer(object):
         logger.info('[GET] object_type=%s, guid=%s, serializer=%s' % \
                     (object_type, guid, serializer))
 
-        return self._get(object_type, guid, None, serializer)
+        return self._get(domain, object_type, guid, None, serializer)
 
-    def get_version(self, object_type, guid, version, serializer):
-        '''Retrieve a specific version of an object from the OSIS object store
-
-        @param object_type: Object type name
-        @type object_type: string
-        @param guid: GUID of the object to retrieve
-        @type guid: string
-        @param version: Version GUID of the object to retrieve
-        @type version: string
-        @param serializer: Name of the serializer to use
-        @type serializer: string
-
-        @return: Serialized object
-        @rtype: string
-        '''
-        logger.info('[GET] object_type=%s, guid=%s, version=%s, '
-                    'serializer=%s' % (object_type, guid, version, serializer))
-
-        return self._get(object_type, guid, version, serializer)
-
-    def delete(self, object_type, guid):
+    def delete(self, domain, object_type, guid):
         '''Delete an object from the OSIS object store
 
         @param object_type: Object type name
@@ -164,34 +146,7 @@ class BaseServer(object):
 
         return params['result']
 
-    def delete_version(self, object_type, guid, version):
-        '''Delete a specific version of an object from the OSIS object store
-
-        @param object_type: Object type name
-        @type object_type: string
-        @param guid: GUID of the object to delete
-        @type guid: string
-        @param version: Version GUID of the object to delete
-        @type version: string
-
-        @return: True or False, according as the deletion succeeds or fails
-        '''
-        
-         # Set up tasklet call parameters
-        params = {
-            'rootobjectguid': guid,
-            'rootobjecttype': object_type,
-            'rootobjectversionguid': version
-        }
-
-        self.tasklet_engine.execute(params=params, tags=('osis', 'delete'))
-
-        if not 'result' in params or not params['result']:
-            return False
-
-        return params['result']
-
-    def put(self, object_type, data, serializer):
+    def put(self, domain, object_type, data, serializer):
         '''Save an object in the OSIS object store
 
         @param object_type: Object type name
@@ -203,7 +158,7 @@ class BaseServer(object):
         '''
 
         try:
-            class_ = ROOTOBJECT_TYPES[object_type]
+            class_ = ROOTOBJECT_TYPES[domain][object_type]
         except KeyError:
             raise UnknownObjectTypeException('Object type %s is not known' % \
                                             object_type)
@@ -216,9 +171,9 @@ class BaseServer(object):
 
         object_ = class_.deserialize(serializer, data)
 
-        self.put_object_in_store(object_type, object_)
+        self.put_object_in_store(domain, object_type, object_)
 
-    def find(self, object_type, filters, view=None):
+    def find(self, domain, object_type, filters, view=None):
         '''Execute a find (query) operation on the store
 
         @param object_type: Object type name
@@ -234,7 +189,7 @@ class BaseServer(object):
         # Even if '' is passed, we want none
         view = view or None
 
-        if object_type not in ROOTOBJECT_TYPES:
+        if object_type not in ROOTOBJECT_TYPES[domain]:
             raise UnknownObjectTypeException('Unknown object type %s' % \
                                              object_type)
 
@@ -244,7 +199,7 @@ class BaseServer(object):
             filter_ = Filter()
             filter_.filters = filters
 
-        result = self.execute_filter(object_type, filter_, view)
+        result = self.execute_filter(domain, object_type, filter_, view)
 
         if not result:
             logger.debug('[FIND] No results found')
@@ -257,7 +212,7 @@ class BaseServer(object):
         #logger.debug('[FIND] %d results found' % len(result[1]))
         return result
 
-    def findAsView(self, object_type, filters, view):
+    def findAsView(self, domain, object_type, filters, view):
         '''Execute a find (query) operation on the store
 
         @param object_type: Object type name
@@ -267,21 +222,20 @@ class BaseServer(object):
         @param view: name of view to return
         @type view: string
         '''
-        if object_type not in ROOTOBJECT_TYPES:
+        if object_type not in ROOTOBJECT_TYPES[domain]:
             raise UnknownObjectTypeException('Unknown object type %s' % \
                                              object_type)
 
         filter_ = Filter()
         filter_.filters = filters
 
-        result = self.execute_filter_as_view(object_type, filter_, view)
+        result = self.execute_filter_as_view(domain, object_type, filter_, view)
 
         return result
 
 
     # Abstract methods
-    def get_object_from_store(self, object_type, guid, preferred_serializer,
-                              version=None):
+    def get_object_from_store(self, domain, object_type, guid, preferred_serializer):
         '''Retrieve an object from the store
 
         @param object_type: Object type name
@@ -308,9 +262,9 @@ class BaseServer(object):
         '''
         # Set up tasklet call parameters
         params = {
+            'domain': domain,   
             'rootobjectguid': guid,
             'rootobjecttype': object_type,
-            'rootobjectversionguid': version,
         }
 
         # Call tasklets. In the end, 'rootobject' should be in params
@@ -322,7 +276,7 @@ class BaseServer(object):
 
         return params['rootobject'], None
 
-    def put_object_in_store(self, object_type, object_):
+    def put_object_in_store(self, domain, object_type, object_):
         '''Store an object in the store
 
         @param object_type: Object type name
@@ -331,15 +285,19 @@ class BaseServer(object):
         @type object_: object
         '''
         
+        # Reset baseversion to the current version
+        object_._baseversion = object_.version
+        
         # Execute store taslkets
         params = {
+            'domain': domain,
             'rootobject': object_,
             'rootobjecttype': object_type,
         }
 
         self.tasklet_engine.execute(params=params, tags=('osis', 'store',))
 
-    def execute_filter(self, object_type, filter_, view):
+    def execute_filter(self, domain, object_type, filter_, view):
         '''Execute a query on the store
 
         @param object_type: Object type name
@@ -354,6 +312,7 @@ class BaseServer(object):
         '''
         
         params = {
+            'domain': domain,
             'rootobjecttype': object_type,
             'filterobject': filter_,
             'osisview': view,
@@ -367,7 +326,7 @@ class BaseServer(object):
         return params['result']
 
 
-    def execute_filter_as_view(self, object_type, filter_, view):
+    def execute_filter_as_view(self, domain, object_type, filter_, view):
         '''Execute a query on the store
 
         @param object_type: Object type name
@@ -380,8 +339,9 @@ class BaseServer(object):
         @return: OSISList formatted resultset
         @rtype: tuple
         '''
-        
+
         params = {
+            'domain': domain,
             'rootobjecttype': object_type,
             'filterobject': filter_,
             'osisview': view,
@@ -394,7 +354,7 @@ class BaseServer(object):
 
         return params['result']
 
-    def runQuery(self, query):
+    def runQuery(self, domain, query):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -405,7 +365,7 @@ class BaseServer(object):
         '''
         
         # Set up tasklet call parameters
-        params = {'query': query}
+        params = {'query': query, 'domain': domain,}
         self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
         if not 'result' in params or not params['result']:
             return list()

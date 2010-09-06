@@ -60,27 +60,21 @@ class OsisClient(object):
         self.transport = transport
         #self.serializer = serializer
 
-    def get(self, guid, version=None):
+    def get(self, guid):
         '''Retrieve a root object with a given GUID from the OSIS server
 
         If no version is specified, the latest version is retrieved.
 
         @param guid: GUID of the root object to retrieve
         @type guid: string
-        @param version: Version GUID of the object to retrieve
-        @type version: string
-
+        
         @return: Root object instance
         @rtype: L{osis.model.RootObjectModel}
         '''
         #pylint: disable-msg=E1101
-        if not version:
-            data = self.transport.get(self._ROOTOBJECTTYPE.__name__, guid,
+        data = self.transport.get(self._ROOTOBJECTTYPE.__name__, guid,
                                       self.serializer.NAME)
-        else:
-            data = self.transport.get_version(self._ROOTOBJECTTYPE.__name__,
-                                              guid, version,
-                                              self.serializer.NAME)
+        
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
 
 
@@ -95,24 +89,18 @@ class OsisClient(object):
         '''
         return self.transport.runQuery(Query)
 
-    def delete(self, guid, version=None):
+    def delete(self, guid):
         '''Delete a root object with a given GUID from the OSIS server
 
         If no version is specified, all the versions shall be deleted.
 
         @param guid: GUID of the root object to delete
         @type guid: string
-        @param version: Version GUID of the object to delete
-        @type version: string
-
+        
         @return: True or False, according as the deletion succeeds or fails
         '''
-        if not version:
-            return self.transport.delete(self._ROOTOBJECTTYPE.__name__, guid)
-        else:
-            return self.transport.delete_version(self._ROOTOBJECTTYPE.__name__,
-                                                 guid, version)
-
+        return self.transport.delete(self._ROOTOBJECTTYPE.__name__, guid)
+        
     def save(self, object_):
         '''Save a root object to the server
 
@@ -129,12 +117,21 @@ class OsisClient(object):
             guid = None
         if not guid:
             object_.guid = str(uuid.uuid4())
+        
+        # Keep original version to be able to check for concurrency violations    
+        object_._baseversion = object_.version
 
         # Set version guid
         object_.version = str(uuid.uuid4())
 
         data = object_.serialize(self.serializer)
-        return self.transport.put(type_, data, self.serializer.NAME)
+        
+        result = self.transport.put(type_, data, self.serializer.NAME)
+        
+        # If everything is ok, set baseversion to version 
+        object_._baseversion = object_.version
+        
+        return result
 
     def new(self, *args, **kwargs): #pylint: disable-msg=W0142
         '''Create a new instance of the root object type
@@ -244,12 +241,16 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         '''Retrieve the accessor from a connection object'''
         #pylint: disable-msg=W0212
         accessor = obj._accessors.get(self._name, None)
+        print 'accessor is %s' % accessor
         if not accessor or not isinstance(accessor, self._accessorimpl):
             accessor = self._accessorimpl(obj.transport, obj.serializer)
             obj._accessors[self._name] = accessor
 
         return accessor
 
+class DomainAccessor(object):
+    '''Dummy object to group RootObjectAccessors per domain'''
+    
 
 def update_rootobject_accessors(cls, clientClass):
     '''Update the L{OsisConnection} class so all root object types are
@@ -261,18 +262,25 @@ def update_rootobject_accessors(cls, clientClass):
     '''
     logger.info('Updating known RootObjectModel types')
 
-    from osis import ROOTOBJECT_TYPES as types
+    from pymodel import ROOTOBJECT_TYPES as types
 
     ## Remove old accessors
     for attrname in dir(cls):
         attr = cls.__dict__.get(attrname, None)
-        if attr and isinstance(attr, RootObjectAccessor) and not any([attrname == getattr(type_,  'OSIS_TYPE_NAME', type_.__name__.lower()) for type_ in types.itervalues()]):
+        if attr and isinstance(attr, RootObjectAccessor) and not any([attrname == getattr(type_,  'PYMODEL_TYPE_NAME', type_.__name__.lower()) for type_ in types.itervalues()]):
             logger.debug('Removing old type %s' % attrname)
             delattr(cls, attrname)
 
     # update accessors
-    for type_ in types.itervalues():
-        name = getattr(type_, 'OSIS_TYPE_NAME', type_.__name__.lower())
-        accessor = RootObjectAccessor(name, type_, clientClass)
-        logger.debug('Adding new type %s' % name)
-        setattr(cls, name, accessor)
+    for domain_name, domain_ in types.iteritems():
+        
+        domain_acc = DomainAccessor()
+        
+        for type_ in domain_.itervalues():
+            name = getattr(type_, 'PYMODEL_TYPE_NAME', type_.__name__.lower())
+            accessor = RootObjectAccessor(name, type_, clientClass)
+            logger.debug('Adding new type %s' % name)
+            print 'Adding new type %s' % name
+            setattr(domain_acc, name, accessor)
+            
+        setattr(cls, domain_name, domain_acc)

@@ -44,7 +44,7 @@ from pymonkey.db.DBConnection import DBConnection
 from OsisView import OsisView, OsisColumn, OsisType
 from OsisFilterObject import OsisFilterObject
 
-from osis.model.serializers import ThriftSerializer
+from pymodel.serializers import ThriftSerializer
 from pg import ProgrammingError
 import exceptions
 import traceback
@@ -124,47 +124,11 @@ class OsisConnectionGeneric(object):
         """
         raise Exception("unimplemented generic connect")
 
-
-    @deprecated
-    def objectExists(self, objType, guid, version):
-        """
-        Checks if an instance of objType with the supplied guid exists
-
-        @param objType : type of object to check
-        @param guid : unique identifier
-        @param version : unique version for the given guid
-        """
-        pass
-
-    @deprecated
-    def viewObjectExists(self, objType, viewName, guid, version):
-        """
-        Checks if an instance of objType with the supplied guid exists
-
-        @param objType : type of object to check
-        @param viewName : view whixh contains the object
-        @param guid : unique identifier
-        @param version : unique version for the given guid
-        """
-        pass
-
-    @deprecated
-    def objectGet(self, objType,guid, version=None):
-        """
-        Get an instance of objType with the supplied guid
-
-        @param objType : type of object to check
-        @param guid : unique identifier
-        @param version : unique identifier indicating the version of the object. (Optional)
-                         If specified, only the mentioned version will be retrieved,
-                         If ommited, only the active version is retrieved !
-        """
-        pass
-
-
-    def runQuery(self, query):
+    def runQuery(self, domain, query):
         '''Run query from OSIS server
 
+        @param domain : domain to query
+        @type domain: string 
         @param query: Query to execute on OSIS server
         @type query: string
 
@@ -176,118 +140,114 @@ class OsisConnectionGeneric(object):
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
-    @deprecated
-    def objectDelete(self, objType, guid, version):
-        """
-        Delete an instance of objType with the supplied guid
-
-        @param objType : type of object to check
-        @param guid : unique identifier
-        @param version : unique version for the given guid
-        """
-        pass
-
-    @deprecated
-    def objectSave(self,data):
-        """
-        Update or create the supplied object
-
-        @param objType : type of object to check
-        @param guid : unique identifier
-        """
-        pass
-
-
-    def createObjectType(self, objType):
+    def createObjectType(self, domain, objType):
         """
         Creates the model structure on the database
 
+        @param domain : domain to create the object in
         @param objType : the object type to create
         """
         objTypeName = objType.__class__.__name__
-        self.createObjectTypeByName(objTypeName)
+        self.createObjectTypeByName(domain, objTypeName)
+        
+    def createObjectTypeByName(self, domain,  objTypeName):
+        '''
+        @param domain : domain to create the object in
+        @param objTypeName : name of the object type to create
+        '''
+        self.schemeCreate(domain, objTypeName)
+        
 
-    def schemeCreate(self, name):
+    def schemeCreate(self, domain, name):
         """
         Creates the model structure on the database
 
+        @param domain : domain to create the scheme in
         @param objTypeName : the name of the type to create
         """
-        if self.schemeExists(name):
-            q.logger.log("Schema %s already exists"%name ,3)
+        if self.schemeExists(domain, name):
+            q.logger.log("Schema %s already exists in domain %s" % (name, domain) ,3)
             return
 
-        sqls = ['CREATE SCHEMA %s'%name]
+        schema = self._getSchemeName(domain, name)
         
-        #, \
-        #'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName, \
-        #'CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName},\
-        #'CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},\
-        #'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},
-        #'CREATE INDEX guid_%(schema)s_main ON %(schema)s.main (guid)'%{'schema':objTypeName}, 'CREATE INDEX version_%(schema)s_main ON %(schema)s.main (version)'%{'schema':objTypeName}]
-
+        sqls = ['CREATE SCHEMA %s' % schema]
+        
         for sql in sqls:
             self.__executeQuery(sql, False)
 
-    def schemeExists(self, name):
+    def schemeExists(self, domain, name):
         """
         Checks if the schema with the supplied name exists
 
+        @param domain : domain to check for the schema
         @param name : name of the schema to check
         """
-        sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'"%name
+        schema = self._getSchemeName(domain, name)
+        
+        sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'" % schema
         result = self.__executeQuery(sql)
         
         if result:
             return True
         else:
             return False
+        
+    def _getSchemeName(self, domain, name):
+        return '%s_%s' % (domain, name)
 
-    def viewExists(self, objType, viewname):
+    def viewExists(self, domain, objType, viewname):
         """
         Checks if the requested view exists in the supplied schema
 
+        @param domain : domain where the view lives 
         @param objType : the object type to check
         @param viewname : name of the view to check
         """
         
-        if not self.schemeExists(objType):
+        if not self.schemeExists(domain, objType):
             return False
         
-        sql =  "select distinct schemaname, tablename from pg_tables where schemaname = '%s' and tablename = '%s'"%(objType, viewname)
+        schema = self._getSchemeName(domain, objType)
+        
+        sql =  "select distinct schemaname, tablename from pg_tables where schemaname = '%s' and tablename = '%s'"%(schema, viewname)
         result = self.__executeQuery(sql)
         if result:
             return True
         else:
             return False
 
-    def objectsFind(self, objType, filterobject, viewToReturn):
+    def objectsFind(self, domain, objType, filterobject, viewToReturn):
         """
         returns a list of matching guids according to the supplied fitlerobject filters
 
+        @param domain : domain where the objects live
         @param objType : type of object to search
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        results =self._find(objType, filterobject, viewToReturn)
+        
+        results = self._find(domain, objType, filterobject, viewToReturn)
 
         if viewToReturn:
             q.logger.log("Building view %s"%viewToReturn ,3)
-            results = self._getViewResults(objType, viewToReturn, results)
+            results = self._getViewResults(domain, objType, viewToReturn, results)
 
         return results
 
-    def _find(self, objType, filterobject, viewToReturn):
+    def _find(self, domain, objType, filterobject, viewToReturn):
         '''
         @todo: remove ugly hack for find without view!
         
         '''
         results = []
+        
+        schema = self._getSchemeName(domain, objType)
 
         if viewToReturn:
-            sql = "select guid from %s.%s"%(objType, viewToReturn)
+            sql = "select guid from %s.%s"%(schema, viewToReturn)
         else:
-            sql = "select guid from %s.view_%s_list" % (objType, objType)
+            sql = "select guid from %s.view_%s_list" % (schema, objType)
 
 
         
@@ -300,31 +260,33 @@ class OsisConnectionGeneric(object):
 
         for item in filterobject.filters:
             view = item.keys()[0]
-            columns = self._getColumns(objType, view)
+            columns = self._getColumns(domain, objType, view)
             value = item.get(view)
             field = value.keys()[0]
             fieldtype = columns.get(field, None)
             
-            if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, objType, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
+            if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, schema, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
             fieldvalue, exactMatch = value.get(field)
             
             query = filterQueries.get(view, list())
-            query.append(self._generateSQLCondition(objType, view, field , fieldvalue, fieldtype, exactMatch))
+            query.append(self._generateSQLCondition(domain, objType, view, field , fieldvalue, fieldtype, exactMatch))
             filterQueries[view] = query
 
-        if filterQueries:results = self._getFiltersResults(objType, filterQueries)
+        if filterQueries:results = self._getFiltersResults(domain, objType, filterQueries)
         
         return list(set(results))
 
-    def objectsFindAsView(self, objType, filterObject, viewName):
+    def objectsFindAsView(self, domain,  objType, filterObject, viewName):
         """
         Find
+        
+        @param domain : the object Type's domain 
         @param objType : type of object to search
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        results = self._find(objType, filterObject, viewName)
-        return self._getViewResultAsDict(objType, viewName, results)
+        results = self._find(domain, objType, filterObject, viewName)
+        return self._getViewResultAsDict(domain, objType, viewName, results)
 
     def getFilterObject(self):
         """
@@ -332,19 +294,20 @@ class OsisConnectionGeneric(object):
         """
         return OsisFilterObject()
 
-    def viewCreate(self, objType, viewName):
+    def viewCreate(self, domain, objType, viewName):
         """
         Creates and returns a new view object
 
+        @param domain : the object Type's domain 
         @param objType : the object type on which to add the view
         @param viewName : the name of the view
         """
 
-        if not self.schemeExists(objType):
-            self.schemeCreate(objType)
+        if not self.schemeExists(domain, objType):
+            self.schemeCreate(domain, objType)
 
-        if not self.viewExists(objType, viewName):
-            return OsisView(objType, viewName)
+        if not self.viewExists(domain, objType, viewName):
+            return OsisView(domain, objType, viewName)
         else:
             q.eventhandler.raiseCriticalError('[%s] already has a view [%s].'%(objType, viewName))
 
@@ -358,24 +321,29 @@ class OsisConnectionGeneric(object):
             self.__executeQuery(sql, False)
 
 
-    def viewDestroy(self, objType, viewName):
+    def viewDestroy(self, domain, objType, viewName):
         """
         Removes a view from the database
+        
+        @param domain : the object Type's domain 
         @param objType : the type of object to destroy
         @param viewName : Osisview object to destroy
         """
-        if not self.viewExists(objType, viewName):
-            q.eventhandler.raiseCriticalError('%s.%s not found.'%(objType, viewName))
+        schema = self._getSchemeName(domain, objType)
+        
+        if not self.viewExists(domain, objType, viewName):
+            q.eventhandler.raiseCriticalError('%s.%s not found.'%(schema, viewName))
             return
 
-        sql = 'DROP TABLE %s.%s CASCADE'%(objType, viewName)
+        sql = 'DROP TABLE %s.%s CASCADE'%(schema, viewName)
         self.__executeQuery(sql, False)
         return True
 
-    def viewDelete(self, objType, viewName, guid, versionguid=None):
+    def viewDelete(self, domain, objType, viewName, guid, versionguid=None):
         """
         Removes row(s) with the supplied guid from the view
 
+        @param domain : the object Type's domain  
         @param objType : the object Type name
         @param viewName : the view from which to remove a row
         @param viewguid : unique identifier (GUID) for the object
@@ -384,16 +352,19 @@ class OsisConnectionGeneric(object):
                              If ommited, all versions will be removed !
         """
 
-        sql = "delete from %s.%s where guid='%s'" % (objType, viewName, guid)
+        schema = self._getSchemeName(domain, objType)
+        
+        sql = "delete from %s.%s where guid='%s'" % (schema, viewName, guid)
         
         self.__executeQuery(sql, False)
         return True
 
 
-    def viewSave(self, objType, viewName, guid, version, fields):
+    def viewSave(self, domain, objType, viewName, guid, version, fields):
         """
         Add a new row to the view
 
+        @param domain : the object Type's domain 
         @param objType : the object Type name
         @param viewName : the view from which to remove a row
         @param guid : unique identifier for the object
@@ -401,30 +372,32 @@ class OsisConnectionGeneric(object):
         @param fields : dict containing the field:values
         """
         
+        schema = self._getSchemeName(domain, objType)
         
-        # @todo: do this transactional!
-        # update == delete + insert
-        self.viewDelete(objType, viewName, guid)
-        
-        
-        fieldnames = "guid, viewguid"
-        values = "'%s', '%s'"%(guid, q.base.idgenerator.generateGUID())
+        newViewGuid = q.base.idgenerator.generateGUID()
 
-        for itemKey in fields.iterkeys():
-            fieldnames = "%s, %s"%(fieldnames, itemKey)
-            if fields[itemKey]:
-                if type(fields[itemKey]) is str:
-                    values = "%s, '%s'"%(values,  self._escape(fields[itemKey]))
+        if not isinstance(fields, list):
+            fields = [fields,]
+        
+        for field in fields:
+            fieldnames = "guid, viewguid"
+            values = "'%s', '%s'"%(guid, newViewGuid)        
+            for itemKey in field.iterkeys():
+                fieldnames = "%s, %s"%(fieldnames, itemKey)
+                if field[itemKey]:
+                    if type(field[itemKey]) is str:
+                        values = "%s, '%s'"%(values,  self._escape(field[itemKey]))
+                    else:
+                        values = "%s, '%s'"%(values,  field[itemKey])
                 else:
-                    values = "%s, '%s'"%(values,  fields[itemKey])
-            else:
-                values = "%s, %s"%(values, self._generateSQLString(fields[itemKey]))
+                    values = "%s, %s"%(values, self._generateSQLString(field[itemKey]))
 
-        sql = "insert into %s.%s (%s) VALUES (%s)"%(objType, viewName, fieldnames, values)
-        try:
-            self.__executeQuery(sql, False)
-        except ProgrammingError, ex:
-            raise OsisException(sql, ex)
+            sql = "insert into %s.%s (%s) VALUES (%s)"%(schema, viewName, fieldnames, values)
+
+            try:
+                self.__executeQuery(sql, False)
+            except ProgrammingError, ex:
+                raise OsisException(sql, ex)
 
     def _generateSQLString(self, value):
         if value == None:
@@ -435,14 +408,17 @@ class OsisConnectionGeneric(object):
             return value
         return "'%s'"% value
 
-    def _generateSQLCondition(self, objType, view, field, value, fieldtype, exactMatch=False):
+    def _generateSQLCondition(self, domain, objType, view, field, value, fieldtype, exactMatch=False):
+        
+        schema = self._getSchemeName(domain, objType)
+         
         ret = ""
         if (isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'None') or (fieldtype in ('uuid') and value in (None, "")):
-            ret = "%s.%s.%s is NULL"%(objType,view,field)
+            ret = "%s.%s.%s is NULL"%(schema,view,field)
         elif fieldtype in  ('uuid', 'bool',):
-            ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
+            ret = "%s.%s.%s = '%s'"%(schema,view,field,value)
         elif fieldtype in ('character varying', 'text', 'datetime'):
-            field = '%s.%s.%s'%(objType,view,field)
+            field = '%s.%s.%s'%(schema,view,field)
             if fieldtype in ('datetime'):
                 field = 'cast(%s as varchar)' % field
             if exactMatch:
@@ -451,16 +427,16 @@ class OsisConnectionGeneric(object):
                 ret = "%s like '%%%s%%'"%(field, self._escape(value))
         else:
             if q.basetype.integer.check(value) or q.basetype.float.check(value):
-                ret = "%s.%s.%s = %s"%(objType,view,field,value)
+                ret = "%s.%s.%s = %s"%(schema,view,field,value)
 
         return ret
 
-    def _getViewResultAsDict(self, objType, view, results):
+    def _getViewResultAsDict(self, domain, objType, view, results):
         if not results:
             return list()
 
-        columns = self._getColumns(objType, view)
-        dataFound = self._getViewData(objType, view, results)
+        columns = self._getColumns(domain, objType, view)
+        dataFound = self._getViewData(domain, objType, view, results)
 
         for data in dataFound:
             for columnName in [col for col in data if columns[col] in osisPGTypeConverter.requiresConvert]:
@@ -468,8 +444,8 @@ class OsisConnectionGeneric(object):
 
         return dataFound
 
-    def _getViewResults(self, objType, view, results):
-        columns = self._getColumns(objType, view)
+    def _getViewResults(self, domain, objType, view, results):
+        columns = self._getColumns(domain, objType, view)
         coldef = list()
 
         for colName, colType in columns.iteritems():
@@ -482,19 +458,25 @@ class OsisConnectionGeneric(object):
 
         #retrieve view data
 
-        rawdata = self._getViewData(objType, view, results)
+        rawdata = self._getViewData(domain, objType, view, results)
 
         return tuple(coldef), tuple(rawdata)
 
 
-    def _getColumns(self, objType, view):
-        columns = self._dbConn.listColumns(view, objType)
+    def _getColumns(self, domain, objType, view):
+        
+        schema = self._getSchemeName(domain, objType)
+        
+        columns = self._dbConn.listColumns(view, schema)
         return columns
 
 
     # @todo: remove reference to viewguid!
-    def _getViewData(self, objType, view, results):
-        viewname = "%s.%s"%(objType, view)
+    def _getViewData(self, domain, objType, view, results):
+        
+        schema = self._getSchemeName(domain, objType)
+        
+        viewname = "%s.%s"%(schema, view)
         viewguid = "%s.guid"%viewname
 
         guids = ','.join("'%s'"%r for r in results)
@@ -508,16 +490,19 @@ class OsisConnectionGeneric(object):
         rawdata = self.__executeQuery(sql)
         return rawdata
 
-    def _getFiltersResults(self, objType, filterQueries):
+    def _getFiltersResults(self, domain, objType, filterQueries):
+        
+        schema = self._getSchemeName(domain, objType)
+        
         conditions = list()
         sql = ""
         for index, view in enumerate(filterQueries):
             conditions.extend(filterQueries[view])
             if index == 0:
                 firstview = view
-                sql = "select %(obj)s.%(firstview)s.guid from %(obj)s.%(firstview)s"%{'obj':objType, 'firstview':firstview}
+                sql = "select %(obj)s.%(firstview)s.guid from %(obj)s.%(firstview)s"%{'obj':schema, 'firstview':firstview}
                 continue
-            sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':objType, 'view':view, 'firstview': firstview}
+            sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':schema, 'view':view, 'firstview': firstview}
     
         if not sql: return list()
         #sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \

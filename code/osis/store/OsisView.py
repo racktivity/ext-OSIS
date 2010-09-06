@@ -40,12 +40,14 @@ from pymonkey.baseclasses.BaseEnumeration import BaseEnumeration, EnumerationWit
 
 class OsisView(object):
 
-    def __init__(self, objType, name):
+    def __init__(self, domain, objType, name):
+        self.domain = domain
         self.name = name;
         self.objType = objType;
         self.columns = {}
         self.setCol('viewguid', q.enumerators.OsisType.UUID, False)
         self.setCol('guid', q.enumerators.OsisType.UUID, False)
+        self.schema = '%s_%s' % (self.domain, self.objType)
         
 
     def setCol(self, name, datatype, nullable):
@@ -54,13 +56,15 @@ class OsisView(object):
 
 
     def buildSql(self):
+        
+        
         fields = []
         for col in self.columns.itervalues():
             fields.append(col.sqlString())
         fieldlist = '\n'.join(fields)[1:]
         sql = list()
-        sql.append("CREATE TABLE %s.%s ( %s, CONSTRAINT pk_%s_viewguid PRIMARY KEY (viewguid))  WITH (OIDS=FALSE) ;"%(self.objType, self.name, fieldlist, self.name))
-        sql.append("CREATE INDEX guid_%(objType)s_%(name)s ON %(objType)s.%(name)s (guid)"%{'objType':self.objType, 'name':self.name})
+        sql.append("CREATE TABLE %s.%s (%s)  WITH (OIDS=FALSE) ;"%(self.schema, self.name, fieldlist))
+        sql.append("CREATE INDEX guid_%(objType)s_%(name)s ON %(schema)s.%(name)s (guid)"%{'objType':self.objType, 'name':self.name, 'schema': self.schema})
         return sql
 
 
@@ -81,6 +85,7 @@ class OsisType(EnumerationWithValue):
     pass
 
 OsisType.registerItem("integer", "integer")
+OsisType.registerItem("bigint", "bigint")
 OsisType.registerItem("string", "character varying(1024)")
 OsisType.registerItem("text", "text")
 OsisType.registerItem("uuid", "uuid")

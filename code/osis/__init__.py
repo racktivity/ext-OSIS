@@ -35,75 +35,62 @@
 
 '''Main package for the OSIS library'''
 
+
 import logging
 from client.connection import AccessorImpl
 from client.connection import OsisConnection
+import osis
 
 logger = logging.getLogger('osis') #pylint: disable-msg=C0103
 
-ROOTOBJECT_TYPES = dict()
+#ROOTOBJECT_TYPES = dict()
 
-def init(model_path, connectionClass=OsisConnection, clientClass=AccessorImpl):
-    '''Initialize the OSIS library
-
-    @param model_path: Folder path containing all root object model modules
-    @type model_path: string
-    '''
-    import osis.utils
-    import osis.client.connection
-
-    types = list(osis.utils.find_rootobject_types(model_path))
-
-    for type_ in types:
-        name = type_.__name__
-        if name in ROOTOBJECT_TYPES:
-            raise RuntimeError('Duplicate root object type %s' % name)
-        ROOTOBJECT_TYPES[name] = type_
-
+def init(connectionClass=OsisConnection, clientClass=AccessorImpl):
+    '''Initialize the OSIS library'''
     osis.client.connection.update_rootobject_accessors(connectionClass, clientClass)
 
 
-# Set up binding to PyMonkey logging
-def _setup_pymonkey_logging():
-    '''Relay OSIS log messages to PyMonkey logging if available
-
-    OSIS uses the standard Python *logging* module to perform logging. This
-    function makes sure any messages logged to the logging module in the *osis*
-    namespace is relayed to the PyMonkey logging subsystem using an appropriate
-    loglevel.
-    '''
-    try:
-        from pymonkey import q
-    except ImportError:
-        logger.info('No PyMonkey support on this system')
-        return
-
-    _logging_level_map = {
-        logging.CRITICAL: 1,
-        logging.ERROR: 2,
-        logging.WARNING: 3,
-        logging.WARN: 3,
-        logging.INFO: 5,
-        logging.DEBUG: 6,
-        logging.NOTSET: 7,
-    }
-
-    class PyMonkeyLogger(logging.Handler):
-        '''Basic logging handler which hooks PyMonkey logging to Python
-        logging'''
-        def emit(self, record):
-            '''Emit one logrecord to the PyMonkey logging subsystem'''
-            level = _logging_level_map.get(record.levelno, 7)
-
-            q.logger.log('%s%s' % (
-                             '[%s] ' % record.name if record.name else '',
-                             record.getMessage(),
-                         ),
-                         level)
-
-    pmlogger = PyMonkeyLogger()
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(pmlogger)
-
-_setup_pymonkey_logging()
-del _setup_pymonkey_logging
+## Set up binding to PyMonkey logging
+#def _setup_pymonkey_logging():
+#    '''Relay OSIS log messages to PyMonkey logging if available
+#
+#    OSIS uses the standard Python *logging* module to perform logging. This
+#    function makes sure any messages logged to the logging module in the *osis*
+#    namespace is relayed to the PyMonkey logging subsystem using an appropriate
+#    loglevel.
+#    '''
+#    try:
+#        from pymonkey import q
+#    except ImportError:
+#        logger.info('No PyMonkey support on this system')
+#        return
+#
+#    _logging_level_map = {
+#        logging.CRITICAL: 1,
+#        logging.ERROR: 2,
+#        logging.WARNING: 3,
+#        logging.WARN: 3,
+#        logging.INFO: 5,
+#        logging.DEBUG: 6,
+#        logging.NOTSET: 7,
+#    }
+#
+#    class PyMonkeyLogger(logging.Handler):
+#        '''Basic logging handler which hooks PyMonkey logging to Python
+#        logging'''
+#        def emit(self, record):
+#            '''Emit one logrecord to the PyMonkey logging subsystem'''
+#            level = _logging_level_map.get(record.levelno, 7)
+#
+#            q.logger.log('%s%s' % (
+#                             '[%s] ' % record.name if record.name else '',
+#                             record.getMessage(),
+#                         ),
+#                         level)
+#
+#    pmlogger = PyMonkeyLogger()
+#    logger.setLevel(logging.DEBUG)
+#    logger.addHandler(pmlogger)
+#
+#_setup_pymonkey_logging()
+#del _setup_pymonkey_logging

@@ -33,3 +33,4 @@
 #
 # </License>
 '''Server-side OSIS implementation'''
+from base import BaseServer

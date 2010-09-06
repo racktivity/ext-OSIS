@@ -35,101 +35,101 @@
 
 '''Several utility functions'''
 
-import sys
-import os
-import os.path
-import imp
-import new
-import logging
-import inspect
-
-from osis.model import RootObjectModel #pylint: disable-msg=E0611
-
-logger = logging.getLogger('osis.utils') #pylint: disable-msg=C0103
-
-def find_rootobject_types(path):
-    '''Find all root object types defined in any module in a given path
-
-    This method will list all Python files in a given file, import them, and
-    check whether a subclass of L{RootObjectModel} is defined in them. It will
-    yield any such type it finds.
-
-    @param path: Folder to inspect
-    @type path: string
-
-    @return: Generator yielding all L{RootObjectModel} subtypes found
-    @rtype: generator
-    '''
-    logger.info('Looking up RootObjectModel definitions in %s' % path)
-
-    if 'osis._rootobjects' not in sys.modules:
-        logger.debug('Creating fake osis._rootobjects module')
-        mod = new.module('osis._rootobjects')
-        sys.modules['osis._rootobjects'] = mod
-
-    def find_modules():
-        '''Find all module files in a given path
-
-        @return: Generator yielding all module paths
-        @rtype: generator
-        '''
-        potential_modules = os.listdir(path)
-        sys.path.append(path)
-        for filename in potential_modules:
-            filepath = os.path.join(path, filename)
-            if filepath.endswith('.py') and os.path.isfile(filepath):
-                yield filename[:-3], filepath
-
-    def load_modules():
-        '''Load a module from a given path
-
-        @return: Generator yielding all modules
-        @rtype: generator
-        '''
-        for module_name, module_path in find_modules():
-            logger.debug('Loading %s' % module_path)
-            modname = 'osis._rootobjects.%s' % module_name
-            if modname not in sys.modules:
-                yield imp.load_source(modname, module_path)
-            #assert modname not in sys.modules, '%s already loaded' % modname
-
-    for module in load_modules():
-        for attrname in dir(module):
-            attr = getattr(module, attrname)
-            if inspect.isclass(attr) and \
-               issubclass(attr, RootObjectModel) and \
-               attr.__module__ == module.__name__: # Get around imports
-                logger.info('Found RootObjectModel \'%s\'' % attr.__name__)
-                yield attr
-
-
-def compare_content(a, b):
-    '''Compare the content of 2 model instances
-
-    This function compares the value of 2 model instances and returns their
-    equality.
-
-    @param a: First instance in comparison
-    @type a: osis.model.Model
-    @param b: Second instance in comparison
-    @type b: osis.model.Model
-
-    @returns: Equality of a and b
-    @rtype: bool
-    '''
-    if type(a) is not type(b):
-        return NotImplemented
-
-    from osis.model.model import DEFAULT_FIELDS
-
-    for attr in a.OSIS_MODEL_INFO.attributes:
-        attr = attr.name
-
-        # Don't compare default fields (guid, version, creationdate)
-        if attr in (field.name for field in DEFAULT_FIELDS):
-            continue
-
-        if not getattr(a, attr) == getattr(b, attr):
-            return False
-
-    return True
+#import sys
+#import os
+#import os.path
+#import imp
+#import new
+#import logging
+#import inspect
+#
+#from osis.model import RootObjectModel #pylint: disable-msg=E0611
+#
+#logger = logging.getLogger('osis.utils') #pylint: disable-msg=C0103
+#
+#def find_rootobject_types(path):
+#    '''Find all root object types defined in any module in a given path
+#
+#    This method will list all Python files in a given file, import them, and
+#    check whether a subclass of L{RootObjectModel} is defined in them. It will
+#    yield any such type it finds.
+#
+#    @param path: Folder to inspect
+#    @type path: string
+#
+#    @return: Generator yielding all L{RootObjectModel} subtypes found
+#    @rtype: generator
+#    '''
+#    logger.info('Looking up RootObjectModel definitions in %s' % path)
+#
+#    if 'osis._rootobjects' not in sys.modules:
+#        logger.debug('Creating fake osis._rootobjects module')
+#        mod = new.module('osis._rootobjects')
+#        sys.modules['osis._rootobjects'] = mod
+#
+#    def find_modules():
+#        '''Find all module files in a given path
+#
+#        @return: Generator yielding all module paths
+#        @rtype: generator
+#        '''
+#        potential_modules = os.listdir(path)
+#        sys.path.append(path)
+#        for filename in potential_modules:
+#            filepath = os.path.join(path, filename)
+#            if filepath.endswith('.py') and os.path.isfile(filepath):
+#                yield filename[:-3], filepath
+#
+#    def load_modules():
+#        '''Load a module from a given path
+#
+#        @return: Generator yielding all modules
+#        @rtype: generator
+#        '''
+#        for module_name, module_path in find_modules():
+#            logger.debug('Loading %s' % module_path)
+#            modname = 'osis._rootobjects.%s' % module_name
+#            if modname not in sys.modules:
+#                yield imp.load_source(modname, module_path)
+#            #assert modname not in sys.modules, '%s already loaded' % modname
+#
+#    for module in load_modules():
+#        for attrname in dir(module):
+#            attr = getattr(module, attrname)
+#            if inspect.isclass(attr) and \
+#               issubclass(attr, RootObjectModel) and \
+#               attr.__module__ == module.__name__: # Get around imports
+#                logger.info('Found RootObjectModel \'%s\'' % attr.__name__)
+#                yield attr
+#
+#
+#def compare_content(a, b):
+#    '''Compare the content of 2 model instances
+#
+#    This function compares the value of 2 model instances and returns their
+#    equality.
+#
+#    @param a: First instance in comparison
+#    @type a: osis.model.Model
+#    @param b: Second instance in comparison
+#    @type b: osis.model.Model
+#
+#    @returns: Equality of a and b
+#    @rtype: bool
+#    '''
+#    if type(a) is not type(b):
+#        return NotImplemented
+#
+#    from osis.model.model import DEFAULT_FIELDS
+#
+#    for attr in a.OSIS_MODEL_INFO.attributes:
+#        attr = attr.name
+#
+#        # Don't compare default fields (guid, version, creationdate)
+#        if attr in (field.name for field in DEFAULT_FIELDS):
+#            continue
+#
+#        if not getattr(a, attr) == getattr(b, attr):
+#            return False
+#
+#    return True
