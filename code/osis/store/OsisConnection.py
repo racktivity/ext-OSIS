@@ -550,7 +550,6 @@ class OsisConnectionGeneric(object):
         guids = ','.join("'%s'"%r for r in results)
         sql = """
         select %(viewname)s.* from %(viewname)s
-            inner join only %(mainname)s on %(mainguid)s = %(viewguid)s and %(mainversion)s = %(viewversion)s
         where %(viewguid)s in (%(guids)s)"""%{
                 'mainname':mainname,
                 'mainguid':mainguid,
@@ -575,8 +574,6 @@ class OsisConnectionGeneric(object):
 	    sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':objType, 'view':view, 'firstview': firstview}
 
 	if not sql: return list()
-	sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \
-																			   'firstview':firstview}
 	sql += " where %s"%(" and ".join(conditions))
 	result = self.__executeQuery(sql)
 	return [row['guid'] for row in result]
@@ -587,7 +584,8 @@ class OsisConnectionGeneric(object):
 
 
     def __executeQuery(self, query, getdict= True):
-	query = self._dbConn.sqlexecute(query)
+	#q.logger.log('OSIS QUERY : %s'%query, 3)
+        query = self._dbConn.sqlexecute(query)
 	if getdict and query:
 	    return query.dictresult() if hasattr(query, 'dictresult') else dict()
 
