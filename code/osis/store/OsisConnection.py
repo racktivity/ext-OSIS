@@ -44,6 +44,10 @@ from pymonkey.db.DBConnection import DBConnection
 from OsisView import OsisView, OsisColumn, OsisType
 from OsisFilterObject import OsisFilterObject
 
+import sqlalchemy
+import sqlalchemy.sql
+import sqlalchemy.types
+
 from osis.model.serializers import ThriftSerializer
 from pg import ProgrammingError
 import exceptions
@@ -110,6 +114,9 @@ class OsisConnectionGeneric(object):
     def __init__(self):
         self._dbConn = None
         self._login = None
+
+        self._sqlalchemy_engine = None
+        self._sqlalchemy_metadata = None
 
     def connect(self, ip, db, login, passwd):
         """
@@ -316,6 +323,20 @@ class OsisConnectionGeneric(object):
             raise OsisException(query, ex)
         return data
 
+
+    def _find_table(self, schema, name):
+        try:
+	    full_name = '%s.%s' % (schema, name)
+            return self._sqlalchemy_metadata.tables[full_name]
+        except KeyError:
+            pass
+
+        self._sqlalchemy_metadata.reflect(
+            bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+
+        return self._sqlalchemy_metadata.tables[full_name]
+
+
     def objectsFind(self, objType, filterobject, viewToReturn=None):
         """
         returns a list of matching guids according to the supplied fitlerobject filters
@@ -324,43 +345,71 @@ class OsisConnectionGeneric(object):
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        results =self._find(objType, filterobject, viewToReturn)
 
-        if viewToReturn:
-            q.logger.log("Building view %s"%viewToReturn ,3)
-            results = self._getViewResults(objType, viewToReturn, results)
+        # Step 1: turn the filters into a more sane datastructure
+        filters = set()
+        for filter_ in filterobject.filters:
+            view = filter_.keys()[0]
+            field = filter_[view].keys()[0]
+            value, exact = filter_[view][field]
 
-        return results
+            filters.add((view, field, value, exact, ))
 
-    def _find(self, objType, filterobject, viewToReturn):
-        results = []
+        filters = tuple(filters)
 
-        if viewToReturn:
-            sql = "select guid from %s.%s"%(objType, viewToReturn)
+        # Step 2: Create list of values to retrieve
+        if not viewToReturn:
+            table_name = 'main'
+            table = self._find_table(objType, table_name)
+            fields = [table.c.guid]
         else:
-            sql = "select guid from only %s.%s"%(objType, 'main')
+            table_name = viewToReturn
+            table = self._find_table(objType, table_name)
+            fields = table.c
 
-        rawdata = self.__executeQuery(sql)
+        # Step 3: Set up joins
+        from_obj = reduce(
+            lambda f, t: f.join(t, t.c.guid == table.c.guid),
+            set(self._find_table(objType, filter_[0]) for filter_ in filters if filter_[0] != table_name),
+            table)
 
-        for row in rawdata:
-            results.append(row['guid'])
+        # Step 4: Create 'where' clause
+        def create_clause((view, field,value, exact, )):
+            table = self._find_table(objType, view)
+            col = table.c[field]
 
-	filterQueries = dict()
+            if col.type in (sqlalchemy.types.String, ) and not exact:
+                return (col.like('%%%s%%' % value))
+            else:
+                return (col == value)
 
-        for item in filterobject.filters:
-            view = item.keys()[0]
-            columns = self._getColumns(objType, view)
-	    value = item.get(view)
-            field = value.keys()[0]
-	    fieldtype = columns.get(field, None)
-	    if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, objType, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
-            fieldvalue, exactMatch = value.get(field)
-	    query = filterQueries.get(view, list())
-	    query.append(self._generateSQLCondition(objType, view, field , fieldvalue, fieldtype, exactMatch))
-	    filterQueries[view] = query
+        if filters:
+            base = create_clause(filters[0])
+            where_clause = reduce(lambda w, f: w & create_clause(f),
+                filters[1:], base)
+        else:
+            where_clause = None
 
-	if filterQueries:results = self._getFiltersResults(objType, filterQueries)
-	return list(set(results))
+        # Step 4: Set up basic select query
+        query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
+
+        # Step 5: Execute query and return result
+        result = None
+        try:
+            result = self._sqlalchemy_engine.execute(query)
+
+            if not viewToReturn:
+                return tuple(row['guid'] for row in result)
+            else:
+                # TODO Column type names?! I don't get why we need this anyway
+                coldefs = tuple((c.name, 'string') for c in fields)
+                rows = tuple(tuple(row[c.name] for c in fields) for row in result)
+                return coldefs, rows
+
+        finally:
+            if result:
+                result.close()
+
 
     def objectsFindAsView(self, objType, filterObject, viewName):
         """
@@ -369,8 +418,10 @@ class OsisConnectionGeneric(object):
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        results = self._find(objType, filterObject, viewName)
-        return self._getViewResultAsDict(objType, viewName, results)
+        cols, rows = self.objectsFind(objType, filterObject, viewName)
+
+        return tuple(
+            dict((col[0], row[i]) for (i, col) in enumerate(cols)) for row in rows)
 
     def getFilterObject(self):
         """
@@ -550,6 +601,7 @@ class OsisConnectionGeneric(object):
         guids = ','.join("'%s'"%r for r in results)
         sql = """
         select %(viewname)s.* from %(viewname)s
+            inner join only %(mainname)s on %(mainguid)s = %(viewguid)s and %(mainversion)s = %(viewversion)s
         where %(viewguid)s in (%(guids)s)"""%{
                 'mainname':mainname,
                 'mainguid':mainguid,
@@ -574,6 +626,8 @@ class OsisConnectionGeneric(object):
 	    sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':objType, 'view':view, 'firstview': firstview}
 
 	if not sql: return list()
+	sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \
+																			   'firstview':firstview}
 	sql += " where %s"%(" and ".join(conditions))
 	result = self.__executeQuery(sql)
 	return [row['guid'] for row in result]
@@ -584,15 +638,32 @@ class OsisConnectionGeneric(object):
 
 
     def __executeQuery(self, query, getdict= True):
-	#q.logger.log('OSIS QUERY : %s'%query, 3)
-        query = self._dbConn.sqlexecute(query)
+	query = self._dbConn.sqlexecute(query)
 	if getdict and query:
 	    return query.dictresult() if hasattr(query, 'dictresult') else dict()
+
+_SA_ENGINES = dict()
 
 class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
         self._dbConn = DBConnection(ip, db, login, passwd)
         self._login = login
+
+        dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
+            'host': ip,
+            'user': login,
+            'password': passwd,
+            'db': db,
+        }
+
+        if dsn in _SA_ENGINES:
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+        else:
+            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn)
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+
+        self._sqlalchemy_metadata = sqlalchemy.MetaData()
+
 	return dict()
 
 class OsisConnectionPG8000(OsisConnectionGeneric):
@@ -603,6 +674,7 @@ class OsisConnectionPG8000(OsisConnectionGeneric):
 def OsisConnection(usePG8000=False):
     # If stackless uses pg8000
     if usePG8000:
+        raise NotImplementedError
         return OsisConnectionPG8000()
     else:
         return OsisConnectionPYmonkeyDBConnection()
