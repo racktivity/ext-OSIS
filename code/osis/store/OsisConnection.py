@@ -378,7 +378,8 @@ class OsisConnectionGeneric(object):
             table = self._find_table(objType, view)
             col = table.c[field]
 
-            if col.type in (sqlalchemy.types.String, ) and not exact:
+            if isinstance(col.type, 
+                (sqlalchemy.types.VARCHAR, sqlalchemy.types.NVARCHAR,)) and not exact:
                 return (col.like('%%%s%%' % value))
             else:
                 return (col == value)
