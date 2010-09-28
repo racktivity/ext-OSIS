@@ -365,7 +365,19 @@ class OsisConnectionGeneric(object):
         else:
             table_name = viewToReturn
             table = self._find_table(objType, table_name)
-            fields = table.c
+            fields = []
+            for c in table.c:
+                # Convert datetime fields to str for backwards compatibility
+                if isinstance(c.type, (sqlalchemy.types.DATETIME,
+                                  sqlalchemy.types.TIMESTAMP,
+                                  sqlalchemy.types.DATE,
+                                  sqlalchemy.types.TIME,)):
+                    fields.append(sqlalchemy.sql.cast(c, sqlalchemy.types.VARCHAR))
+                else:
+                    fields.append(c)
+            
+        # TODO Column type names?! I don't get why we need this anyway
+        coldefs = tuple((c.name, 'string') for c in table.c)
 
         # Step 3: Set up joins
         from_obj = reduce(
@@ -402,9 +414,7 @@ class OsisConnectionGeneric(object):
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
-                # TODO Column type names?! I don't get why we need this anyway
-                coldefs = tuple((c.name, 'string') for c in fields)
-                rows = tuple(tuple(row[c.name] for c in fields) for row in result)
+                rows = tuple(tuple(row.values()) for row in result)
                 return coldefs, rows
 
         finally:
