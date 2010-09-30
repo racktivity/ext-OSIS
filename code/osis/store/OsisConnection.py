@@ -506,35 +506,42 @@ class OsisConnectionGeneric(object):
         @param viewName : the view from which to remove a row
         @param guid : unique identifier for the object
         @param versionguid : unique identifier indicating the version of the object
-        @param fields : dict containing the field:values or list of dict containing the field:values if multiple records needs to be updated
-        """
-        
+        @param fields : dict containing the field:values or list of dict containing 
+                        the field:values if multiple records needs to be updated
+        """      
+          
+        # Remove current entry 
         self.viewDelete(objType, viewName, guid)
         
+        # Prepare values        
         newViewGuid = q.base.idgenerator.generateGUID()
-
         if not isinstance(fields, list):
             fields = [fields,]
+
+        # Add new entry
+        table = self._find_table(objType, viewName)
         
         for field in fields:
-            fieldnames = "guid, version, viewguid"
-            values = "'%s', '%s', '%s'"%(guid, version, newViewGuid)        
-            for itemKey in field.iterkeys():
-                fieldnames = "%s, %s"%(fieldnames, itemKey)
-                if field[itemKey]:
-                    if type(field[itemKey]) is str:
-                        values = "%s, '%s'"%(values,  self._escape(field[itemKey]))
-                    else:
-                        values = "%s, '%s'"%(values,  field[itemKey])
-                else:
-                    values = "%s, %s"%(values, self._generateSQLString(field[itemKey]))
-
-            sql = "insert into %s.%s (%s) VALUES (%s)"%(objType, viewName, fieldnames, values)
-
+            # Add missing field data
+            field.update({
+                'guid': guid,
+                'version': version,
+                'viewguid': newViewGuid,
+            })
+            
+            for k, v in field.iteritems():
+                if isinstance(v, BaseEnumeration):
+                    field[k] = str(v)
+            
+            query = table.insert().values(values=field)
+            
+            result = None
             try:
-                self.__executeQuery(sql, False)
-            except ProgrammingError, ex:
-                raise OsisException(sql, ex)
+                result = self._sqlalchemy_engine.execute(query, field)
+            finally:
+                if result:
+                    result.close()
+
 
     def _generateSQLString(self, value):
         if value == None:
