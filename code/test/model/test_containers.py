@@ -1,6 +1,6 @@
 import unittest
 
-from osis import model
+import pymodel as model
 from osis.utils import compare_content
 
 class ContentComparisonMixin:

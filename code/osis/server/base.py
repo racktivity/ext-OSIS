@@ -72,7 +72,8 @@ class BaseServer(object):
     def _get(self, domain, object_type, guid, version, serializer):
         '''Helper method to retrieve a specific version of an object from the
         OSIS object store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param guid: GUID of the object to retrieve
@@ -105,7 +106,8 @@ class BaseServer(object):
 
     def get(self, domain, object_type, guid, serializer):
         '''Retrieve an object from the OSIS object store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param guid: GUID of the object to retrieve
@@ -123,7 +125,8 @@ class BaseServer(object):
 
     def delete(self, domain, object_type, guid):
         '''Delete an object from the OSIS object store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param guid: GUID of the object to delete
@@ -148,7 +151,8 @@ class BaseServer(object):
 
     def put(self, domain, object_type, data, serializer):
         '''Save an object in the OSIS object store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param data: Serialized object
@@ -175,7 +179,8 @@ class BaseServer(object):
 
     def find(self, domain, object_type, filters, view=None):
         '''Execute a find (query) operation on the store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param filters: List of query filters
@@ -214,7 +219,8 @@ class BaseServer(object):
 
     def findAsView(self, domain, object_type, filters, view):
         '''Execute a find (query) operation on the store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param filters: List of query filters
@@ -235,9 +241,10 @@ class BaseServer(object):
 
 
     # Abstract methods
-    def get_object_from_store(self, domain, object_type, guid, preferred_serializer):
+    def get_object_from_store(self, domain, object_type, guid, preferred_serializer, version=None):
         '''Retrieve an object from the store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param guid: GUID of the object to retrieve
@@ -265,6 +272,7 @@ class BaseServer(object):
             'domain': domain,   
             'rootobjectguid': guid,
             'rootobjecttype': object_type,
+            'rootobjectversionguid': version,
         }
 
         # Call tasklets. In the end, 'rootobject' should be in params
@@ -278,7 +286,8 @@ class BaseServer(object):
 
     def put_object_in_store(self, domain, object_type, object_):
         '''Store an object in the store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param object_: The object to store
@@ -299,7 +308,8 @@ class BaseServer(object):
 
     def execute_filter(self, domain, object_type, filter_, view):
         '''Execute a query on the store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param filter_: Filter to execute
@@ -328,7 +338,8 @@ class BaseServer(object):
 
     def execute_filter_as_view(self, domain, object_type, filter_, view):
         '''Execute a query on the store
-
+        @param domain: Domain of the object
+        @type domain: string
         @param object_type: Object type name
         @type object_type: string
         @param filter_: Filter to execute
@@ -354,7 +365,7 @@ class BaseServer(object):
 
         return params['result']
 
-    def runQuery(self, domain, query):
+    def runQuery(self, query):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -365,7 +376,7 @@ class BaseServer(object):
         '''
         
         # Set up tasklet call parameters
-        params = {'query': query, 'domain': domain,}
+        params = {'query': query, }
         self.tasklet_engine.execute(params=params, tags=('osis', 'query'))
         if not 'result' in params or not params['result']:
             return list()

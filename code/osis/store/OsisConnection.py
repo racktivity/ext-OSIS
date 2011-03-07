@@ -124,11 +124,9 @@ class OsisConnectionGeneric(object):
         """
         raise Exception("unimplemented generic connect")
 
-    def runQuery(self, domain, query):
+    def runQuery(self, query):
         '''Run query from OSIS server
 
-        @param domain : domain to query
-        @type domain: string 
         @param query: Query to execute on OSIS server
         @type query: string
 
@@ -155,8 +153,17 @@ class OsisConnectionGeneric(object):
         @param domain : domain to create the object in
         @param objTypeName : name of the object type to create
         '''
+        if self.schemeExists(domain, objTypeName):
+            q.logger.log("ObjectType %s already exists"%objTypeName ,3)
+            return
         self.schemeCreate(domain, objTypeName)
-        
+        schema = self._getSchemeName(domain, objTypeName)
+        sqls = [
+        'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%schema, \
+        'CREATE INDEX guid_%(schema)s_main ON %(schema)s.main (guid)'%{'schema':schema}, 'CREATE INDEX version_%(schema)s_main ON %(schema)s.main (version)'%{'schema':schema}]
+
+        for sql in sqls:
+            self.__executeQuery(sql, False)
 
     def schemeCreate(self, domain, name):
         """
@@ -234,6 +241,133 @@ class OsisConnectionGeneric(object):
             results = self._getViewResults(domain, objType, viewToReturn, results)
 
         return results
+
+    def _createObject(self, domain, data):
+        """
+        Store the supplied data in the database
+        @param data : object to store
+        """
+        data.creationdate = time.strftime('%Y-%m-%d %H:%M', time.localtime())
+
+        obj = data.serialize(ThriftSerializer)
+        obj = obj.encode('hex')
+        schema = self._getSchemeName(domain, data.__class__.__name__)
+        query = "insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(schema, data.guid, data.version, data.creationdate, obj)
+        try:
+            self.__executeQuery(query, False)
+        except ProgrammingError, ex:
+            raise OsisException(query, ex)
+        return data
+
+    def _updateObject(self, domain, data):
+        """
+        Update the supplied data in the database
+
+        @param data : object to update
+        """
+        obj = data.serialize(ThriftSerializer)
+        obj = obj.encode('hex')
+        schema = self._getSchemeName(domain, data.__class__.__name__)
+        query = "update only %s.main set guid = '%s', version = '%s', data = '{%s}' where guid = '%s'"%(schema, data.guid, data.version, obj, data.guid)
+        try:
+            self.__executeQuery(query, False)
+        except ProgrammingError, ex:
+            raise OsisException(query, ex)
+        return data
+
+
+
+    def objectSave(self, domain, data):
+        """
+        Update or create the supplied object
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        """
+        if not self.objectExists(domain, data.__class__.__name__, data.guid, None):
+            return self._createObject(domain, data)
+        else:
+            return self._updateObject(domain, data)
+
+    def objectGet(self, domain, objType, guid, version=None):
+        """
+        Get an instance of objType with the supplied guid
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        @param version : unique identifier indicating the version of the object. (Optional)
+                         If specified, only the mentioned version will be retrieved,
+                         If ommited, only the active version is retrieved !
+        """
+        
+        schema = self._getSchemeName(domain, objType)
+        if not version:
+            sql = "select * from only %s.main where guid='%s'"%(schema, guid)
+            errorStr = '%s with guid %s not found.'%(schema, guid)
+        else:
+            sql = "select * from %s.main where guid='%s' and version = '%s'"%(schema, guid, version)
+            errorStr = '%s with guid %s and version %s not found.'%(schema, guid, version)
+
+        result = self.__executeQuery(sql)
+        if not result:
+            q.eventhandler.raiseCriticalError(errorStr)
+        else:
+            result =  result[0]['data'][1:-1]
+            return result.decode('hex')
+
+    def objectDelete(self, domain, objType, guid, version):
+        """
+        Delete an instance of objType with the supplied guid
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        @param version : unique version for the given guid
+        """
+        schema = self._getSchemeName(domain, objType)
+        if(self.objectExists(domain, objType, guid, version)):
+            if not version:
+                sql = "delete from %s.main where guid='%s'"%(schema, guid)
+            else:
+                sql = "delete from %s.main where guid='%s' and version='%s'"%(schema, guid, version)
+
+            self.__executeQuery(sql, False)
+            return True
+        else:
+            if not version:
+                q.eventhandler.raiseCriticalError('%s with guid %s not found.'%(objType, guid))
+            else:
+                q.eventhandler.raiseCriticalError('%s with guid %s and version %s not found.'%(objType, guid, version))
+
+    def viewObjectExists(self, domain, objType, viewName, guid, version):
+        """
+        Checks if an instance of objType with the supplied guid exists
+
+        @param objType : type of object to check
+        @param viewName : view whixh contains the object
+        @param guid : unique identifier
+        @param version : unique version for the given guid
+        """
+        schema = self._getSchemeName(domain, objType)
+        if not version:
+            sql = "select * from only %s.%s where guid='%s'"%(schema, viewName, guid)
+        else:
+            sql ="select * from %s.%s where guid='%s' and version='%s'"%(schema, viewName, guid, version)
+
+        result = self.__executeQuery(sql)
+        if result:
+            return result[0] > 0
+        return False
+
+    def objectExists(self, domain, objType, guid, version):
+        """
+        Checks if an instance of objType with the supplied guid exists
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        @param version : unique version for the given guid
+        """
+
+        return self.viewObjectExists(domain, objType, 'main', guid, version)
 
     def _find(self, domain, objType, filterobject, viewToReturn):
         '''

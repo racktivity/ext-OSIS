@@ -56,7 +56,7 @@ class XMLRPCTransport(object):
         if service_name:
             self.proxy = getattr(self.proxy, service_name)
 
-    def get(self, type_, guid, serializer):
+    def get(self, domain, type_, guid, serializer):
         '''Retrieve an serialized object from the server
 
         @param type_: Root object type name
@@ -70,9 +70,9 @@ class XMLRPCTransport(object):
         @rtype: string
         '''
         logger.debug('GET %s %s' % (type_, guid))
-        return base64.decodestring(self.proxy.get(type_, guid, serializer))
+        return base64.decodestring(self.proxy.get(domain, type_, guid, serializer))
 
-    def get_version(self, type_, guid, version, serializer):
+    def get_version(self, domain, type_, guid, version, serializer):
         '''Retrieve an serialized object from the server
 
         @param type_: Root object type name
@@ -87,11 +87,11 @@ class XMLRPCTransport(object):
         @return: Serialized root object instance
         @rtype: string
         '''
-        logger.debug('GET %s %s version %s' % (type_, guid, version))
-        return base64.decodestring(self.proxy.get_version(type_, guid,
+        logger.debug('GET %s %s version %s' % (domain, type_, guid, version))
+        return base64.decodestring(self.proxy.get_version(domain, type_, guid,
                                                           version, serializer))
 
-    def runQuery(self,query):
+    def runQuery(self, query):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -103,7 +103,7 @@ class XMLRPCTransport(object):
 
         return self.proxy.runQuery(query)
 
-    def delete(self, type_, guid):
+    def delete(self, domain, type_, guid):
         '''Delete a serialized object from the server
 
         @param type_: Root object type name
@@ -113,10 +113,10 @@ class XMLRPCTransport(object):
 
         @return: True or False, according as the deletion succeeds or fails.
         '''
-        logger.debug('DELETE %s %s' % (type_, guid))
-        return self.proxy.delete(type_, guid)
+        logger.debug('DELETE %s %s %s' % (domain, type_, guid))
+        return self.proxy.delete(domain, type_, guid)
 
-    def delete_version(self, type_, guid, version):
+    def delete_version(self, domain, type_, guid, version):
         '''Delete a serialized object from the server
 
         @param type_: Root object type name
@@ -128,11 +128,11 @@ class XMLRPCTransport(object):
 
         @return: True or False, according as the deletion succeeds or fails.
         '''
-        logger.debug('DELETE %s %s version %s' % (type_, guid, version))
-        return self.proxy.delete_version(type_, guid, version)
+        logger.debug('DELETE %s %s %s version %s' % (domain, type_, guid, version))
+        return self.proxy.delete_version(domain, type_, guid, version)
 
 
-    def put(self, type_, data, serializer):
+    def put(self, domain, type_, data, serializer):
         '''Store a serialized object to the server
 
         @param type_: Root object type name
@@ -143,10 +143,10 @@ class XMLRPCTransport(object):
         @type serializer: string
         '''
         data = base64.encodestring(data)
-        logger.debug('PUT %s' % type_)
-        self.proxy.put(type_, data, serializer)
+        logger.debug('PUT %s %s' % (domain, type_))
+        self.proxy.put(domain, type_, data, serializer)
 
-    def find(self, type_, filter_, view):
+    def find(self, domain, type_, filter_, view):
         '''Perform a filter operation on the server
 
         @param type_: Root object type name
@@ -162,11 +162,11 @@ class XMLRPCTransport(object):
         filter_data = filter_.filters
 
         if view:
-            return self.proxy.find(type_, filter_data, view)
+            return self.proxy.find(domain, type_, filter_data, view)
         else:
-            return self.proxy.find(type_, filter_data)
+            return self.proxy.find(domain, type_, filter_data)
 
-    def findAsView(self, type_, filter_, view):
+    def findAsView(self, domain, type_, filter_, view):
         '''Perform a filter operation on the server
 
         @param type_: Root object type name
@@ -181,4 +181,4 @@ class XMLRPCTransport(object):
         '''
         filter_data = filter_.filters
 
-        return self.proxy.findAsView(type_, filter_data, view)
+        return self.proxy.findAsView(domain, type_, filter_data, view)

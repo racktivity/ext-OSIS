@@ -58,7 +58,7 @@ class OsisClient(object):
         @type serializer: object
         '''
         self.transport = transport
-        #self.serializer = serializer
+        self.serializer = serializer
 
     def get(self, guid):
         '''Retrieve a root object with a given GUID from the OSIS server
@@ -72,7 +72,7 @@ class OsisClient(object):
         @rtype: L{osis.model.RootObjectModel}
         '''
         #pylint: disable-msg=E1101
-        data = self.transport.get(self._ROOTOBJECTTYPE.__name__, guid,
+        data = self.transport.get(self._domain, self._ROOTOBJECTTYPE.__name__, guid,
                                       self.serializer.NAME)
         
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
@@ -99,7 +99,7 @@ class OsisClient(object):
         
         @return: True or False, according as the deletion succeeds or fails
         '''
-        return self.transport.delete(self._ROOTOBJECTTYPE.__name__, guid)
+        return self.transport.delete(self._domain, self._ROOTOBJECTTYPE.__name__, guid)
         
     def save(self, object_):
         '''Save a root object to the server
@@ -126,7 +126,7 @@ class OsisClient(object):
 
         data = object_.serialize(self.serializer)
         
-        result = self.transport.put(type_, data, self.serializer.NAME)
+        result = self.transport.put(self._domain, type_, data, self.serializer.NAME)
         
         # If everything is ok, set baseversion to version 
         object_._baseversion = object_.version
@@ -163,7 +163,7 @@ class OsisClient(object):
         #pylint: disable-msg=E1101
         type_ = self._ROOTOBJECTTYPE.__name__
 
-        result = self.transport.find(type_, filter_, view)
+        result = self.transport.find(self._domain, type_, filter_, view)
 
         if not view:
             return result
@@ -181,7 +181,7 @@ class OsisClient(object):
         @return: list of dicts representing the view{col: value}
         """
         type_ = self._ROOTOBJECTTYPE.__name__
-        result = self.transport.findAsView(type_, filter_, viewName)
+        result = self.transport.findAsView(self._domain, type_, filter_, viewName)
         return result
 
 class OsisConnection(object):
@@ -229,7 +229,6 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         '''
         logger.info('Creating root object accessor %s' % name)
         self._name = name
-
         class AccessorImpl_(clientClass):
             '''Implementation of an specific L{OsisClient} root object
             accessor'''
@@ -237,20 +236,29 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
 
         self._accessorimpl = AccessorImpl_
 
-    def __get__(self, obj, type_=None): #pylint: disable-msg=W0613
+    def __get__(self, domain, type_=None): #pylint: disable-msg=W0613
         '''Retrieve the accessor from a connection object'''
         #pylint: disable-msg=W0212
-        accessor = obj._accessors.get(self._name, None)
-        print 'accessor is %s' % accessor
+        client = domain._parent
+        accessor = client._accessors.get(self._name, None)
         if not accessor or not isinstance(accessor, self._accessorimpl):
-            accessor = self._accessorimpl(obj.transport, obj.serializer)
-            obj._accessors[self._name] = accessor
+            accessor = self._accessorimpl(client.transport, client.serializer)
+            accessor._domain = domain.name
+            client._accessors[self._name] = accessor
 
         return accessor
 
 class DomainAccessor(object):
     '''Dummy object to group RootObjectAccessors per domain'''
     
+    def __init__(self, name):
+        self.name = name
+    
+    def __get__(self, client, type_=None): #pylint: disable-msg=W0613
+        '''Make sure we know through which object we are being accessed'''
+        #pylint: disable-msg=W0212
+        self._parent = client
+        return self
 
 def update_rootobject_accessors(cls, clientClass):
     '''Update the L{OsisConnection} class so all root object types are
@@ -274,13 +282,12 @@ def update_rootobject_accessors(cls, clientClass):
     # update accessors
     for domain_name, domain_ in types.iteritems():
         
-        domain_acc = DomainAccessor()
+        domain_acc = DomainAccessor(domain_name)
         
         for type_ in domain_.itervalues():
             name = getattr(type_, 'PYMODEL_TYPE_NAME', type_.__name__.lower())
             accessor = RootObjectAccessor(name, type_, clientClass)
             logger.debug('Adding new type %s' % name)
-            print 'Adding new type %s' % name
-            setattr(domain_acc, name, accessor)
+            setattr(DomainAccessor, name, accessor)
             
         setattr(cls, domain_name, domain_acc)
