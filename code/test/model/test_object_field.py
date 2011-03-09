@@ -1,6 +1,6 @@
 import unittest
 
-from osis import model
+import pymodel as model
 
 class BarModel(model.Model):
     baz = model.String(thrift_id=1)

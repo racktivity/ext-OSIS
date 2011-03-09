@@ -39,7 +39,7 @@ import sys
 import inspect
 import unittest
 
-def init(path):
+def init(domain, path):
     '''Re-initialize OSIS inside a running Python environment
 
     This function removes all previously loaded modules from sys.modules, clears
@@ -48,14 +48,16 @@ def init(path):
     @param path: Path to OSIS model definition modules
     @type path: string
     '''
-    from osis import init as _init, ROOTOBJECT_TYPES
+    import osis
+    import pymodel
 
-    ROOTOBJECT_TYPES.clear()
+    pymodel.ROOTOBJECT_TYPES.clear()
     for modulename in sys.modules.keys():
         if modulename.startswith('osis._rootobjects'):
             sys.modules.pop(modulename)
 
-    _init(path)
+    pymodel.init(path, domain)
+    osis.init()
 
 
 class OsisTestCase(object):
@@ -100,7 +102,7 @@ def setup(globals_):
     @param globals_: Globals of the module containing tests
     @type globals_: dict
     '''
-    from osis.model.serializers import SERIALIZERS
+    from pymodel.serializers import SERIALIZERS
 
     # For every element defined in the given module
     for key, value in globals_.copy().iteritems():

@@ -1,7 +1,7 @@
 import unittest
 
 import pymodel as model
-from osis.utils import compare_content
+from pymodel.utils import compare_content
 
 class ContentComparisonMixin:
     def __eq__(self, other):

@@ -1,4 +1,2 @@
-import osis.model
-
-osis.model.Model
-osis.model.RootObjectModel
+import pymodel
+pymodel.RootObjectModel

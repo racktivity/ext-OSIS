@@ -35,7 +35,7 @@
 
 '''Model definitions for regression test of Trac #14'''
 
-from osis import model
+import pymodel as model
 
 class Address(model.Model):
       street = model.String(thrift_id=1)

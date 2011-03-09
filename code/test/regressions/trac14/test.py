@@ -44,14 +44,15 @@ from osis.client import OsisConnection
 from osis.client.xmlrpc import XMLRPCTransport
 
 class TestTrac14(unittest.TestCase):
+    DOMAIN = "test_domain"
     def setUp(self):
-        init(os.path.dirname(__file__))
+        init(self.DOMAIN, os.path.dirname(__file__))
 
     def test_serialize(self):
         transport = XMLRPCTransport('http://localhost:8088')
         client = OsisConnection(transport, self.serializer)
-
-        comp = client.company.new(name='Aserver', url='http://www.aserver.com')
+        clientdomain = getattr(client, self.DOMAIN)
+        comp = clientdomain.company.new(name='Aserver', url='http://www.aserver.com')
 
         employee1 = comp.employees.new(first_name='John', last_name='Doe')
         employee1.email_addresses.append('john.doe@aserver.com')

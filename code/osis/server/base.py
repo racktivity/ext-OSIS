@@ -123,6 +123,27 @@ class BaseServer(object):
 
         return self._get(domain, object_type, guid, None, serializer)
 
+    def get_version(self, domain, object_type, guid, version, serializer):
+        '''Retrieve an object from the OSIS object store
+        @param domain: Domain of the object
+        @type domain: string
+        @param object_type: Object type name
+        @type object_type: string
+        @param guid: GUID of the object to retrieve
+        @type guid: string
+        @param version: Version of the object to retrieve
+        @type version: string
+        @param serializer: Name of the serializer to use
+        @type serializer: string
+
+        @return: Serialized object
+        @rtype: string
+        '''
+        logger.info('[GET] object_type=%s, guid=%s, serializer=%s' % \
+                    (object_type, guid, serializer))
+
+        return self._get(domain, object_type, guid, version, serializer)
+
     def delete(self, domain, object_type, guid):
         '''Delete an object from the OSIS object store
         @param domain: Domain of the object

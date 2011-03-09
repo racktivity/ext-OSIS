@@ -41,9 +41,9 @@ import unittest
 from osis.server.base import BaseServer
 
 def cleanup_environment():
-    from osis import ROOTOBJECT_TYPES
+    from pymodel import ROOTOBJECT_TYPES
 
-    ROOTOBJECT_TYPES.clear()
+    #ROOTOBJECT_TYPES.clear()
     for modulename in sys.modules.keys():
         if modulename.startswith('osis._rootobjects'):
             sys.modules.pop(modulename)
@@ -56,43 +56,48 @@ class FakeXMLRPCServer(BaseServer):
     def __init__(self):
         self.data = dict()
 
-    def get(self, type_, guid, serializer):
-        data = BaseServer.get(self, type_, guid, serializer)
+    def get(self, domain, type_, guid, serializer):
+        data = BaseServer.get(self, domain, type_, guid, serializer)
         return base64.encodestring(data)
 
-    def get_version(self, type_, guid, version, serializer):
-        data = BaseServer.get_version(self, type_, guid, version, serializer)
+    def get_version(self, domain, type_, guid, version, serializer):
+        data = BaseServer.get_version(self, domain, type_, guid, version, serializer)
         return base64.encodestring(data)
 
-    def put(self, type_, data, serializer):
+    def put(self, domain, type_, data, serializer):
         data = base64.decodestring(data)
-        BaseServer.put(self, type_, data, serializer)
+        BaseServer.put(self, domain, type_, data, serializer)
         return True
 
-    def get_object_from_store(self, object_type, guid, preferred_serializer,
+    def get_object_from_store(self, domain, object_type, guid, preferred_serializer,
                               version=None):
         version = version or 'latest'
 
-        if not object_type in self.data:
+        if not domain in self.data:
             raise ObjectNotFoundException
 
-        if not guid in self.data[object_type]:
+        if not object_type in self.data[domain]:
             raise ObjectNotFoundException
 
-        if version and version not in self.data[object_type][guid]:
+        if not guid in self.data[domain][object_type]:
             raise ObjectNotFoundException
 
-        return self.data[object_type][guid][version], None
+        if version and version not in self.data[domain][object_type][guid]:
+            raise ObjectNotFoundException
 
-    def put_object_in_store(self, object_type, object_):
-        if not object_type in self.data:
-            self.data[object_type] = dict()
+        return self.data[domain][object_type][guid][version], None
 
-        if not object_.guid in self.data[object_type]:
-            self.data[object_type][object_.guid] = dict()
+    def put_object_in_store(self, domain, object_type, object_):
+        if not domain in self.data:
+            self.data[domain] = dict()
+        if not object_type in self.data[domain]:
+            self.data[domain][object_type] = dict()
 
-        self.data[object_type][object_.guid][object_.version] = object_
-        self.data[object_type][object_.guid]['latest'] = object_
+        if not object_.guid in self.data[domain][object_type]:
+            self.data[domain][object_type][object_.guid] = dict()
+
+        self.data[domain][object_type][object_.guid][object_.version] = object_
+        self.data[domain][object_type][object_.guid]['latest'] = object_
 
     def execute_filter(self, object_type, filter_, view):
         raise NotImplementedError
@@ -104,23 +109,24 @@ class FakeXMLRPCTransport(object):
     def __init__(self, uri, service_name=None):
         pass
 
-    def get(self, type_, guid, serializer):
-        data = server.get(type_, guid, serializer)
+    def get(self, domain, type_, guid, serializer):
+        data = server.get(domain, type_, guid, serializer)
         return base64.decodestring(data)
 
-    def get_version(self, type_, guid, version, serializer):
-        data = server.get_version(type_, guid, version, serializer)
+    def get_version(self, domain, type_, guid, version, serializer):
+        data = server.get_version(domain, type_, guid, version, serializer)
         return base64.decodestring(data)
 
-    def put(self, type_, data, serializer):
+    def put(self, domain, type_, data, serializer):
         data = base64.encodestring(data)
-        return server.put(type_, data, serializer)
+        return server.put(domain, type_, data, serializer)
 
-    def find(self, type_, filter_, view):
-        return server.find(type_, filter_, view)
+    def find(self, domain, type_, filter_, view):
+        return server.find(domain, type_, filter_, view)
 
 
 class TestFullCycle(unittest.TestCase):
+    DOMAIN = "test_domain"
     def patch_xmlrpc_transport(self):
         import osis.client.xmlrpc
         self._original_xmlrpc_transport = osis.client.xmlrpc.XMLRPCTransport
@@ -140,10 +146,13 @@ class TestFullCycle(unittest.TestCase):
 
     def test_0010_initialize_osis(self):
         '''Initialize the OSIS system'''
-        from osis import init
+        import osis
+        import pymodel
         model_path = os.path.abspath(
                         os.path.join(os.path.dirname(__file__), '_models'))
-        init(model_path)
+                        
+        pymodel.init(model_path, self.DOMAIN)
+        osis.init()
 
     def test_0020_instanciate_transport(self):
         '''Instanciate an XMLRPC transport'''
@@ -156,11 +165,12 @@ class TestFullCycle(unittest.TestCase):
         self.test_0020_instanciate_transport()
         from osis.client import OsisConnection
         self.connection = OsisConnection(self.transport, self.serializer)
+        self.domainconnection = getattr(self.connection, self.DOMAIN)
 
     def test_0040_create_object_instance(self):
         '''Create a simple object'''
         self.test_0030_instanciate_connection()
-        self.object_ = self.connection.simple.new()
+        self.object_ = self.domainconnection.simple.new()
 
     def test_0050_set_object_data(self):
         '''Set simple object data'''
@@ -170,14 +180,14 @@ class TestFullCycle(unittest.TestCase):
     def test_0060_save_object(self):
         '''Save simple object'''
         self.test_0050_set_object_data()
-        self.connection.simple.save(self.object_)
+        self.domainconnection.simple.save(self.object_)
 
     def test_0070_retrieve_object(self):
         '''Retrieve simple object'''
         self.test_0060_save_object()
         guid = self.object_.guid
 
-        self.object2 = self.connection.simple.get(guid)
+        self.object2 = self.domainconnection.simple.get(guid)
 
     def test_0080_compare_objects(self):
         '''Compare stored and retrieved object'''
@@ -190,8 +200,7 @@ class TestFullCycle(unittest.TestCase):
         self.test_0080_compare_objects()
         guid = self.object_.guid
         version = self.object_.version
-
-        self.object3 = self.connection.simple.get(guid, version)
+        self.object3 = self.domainconnection.simple.get(guid, version)
 
     def test_0100_compare_objects(self):
         '''Compare stored and retrieved object'''

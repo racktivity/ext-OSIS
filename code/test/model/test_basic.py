@@ -1,6 +1,6 @@
 import unittest
 
-from osis import model
+import pymodel as model
 
 class A(model.RootObjectModel):
     s = model.String(thrift_id=1)

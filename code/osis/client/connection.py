@@ -60,7 +60,7 @@ class OsisClient(object):
         self.transport = transport
         self.serializer = serializer
 
-    def get(self, guid):
+    def get(self, guid, version=None):
         '''Retrieve a root object with a given GUID from the OSIS server
 
         If no version is specified, the latest version is retrieved.
@@ -72,8 +72,12 @@ class OsisClient(object):
         @rtype: L{osis.model.RootObjectModel}
         '''
         #pylint: disable-msg=E1101
-        data = self.transport.get(self._domain, self._ROOTOBJECTTYPE.__name__, guid,
+        if not version:
+            data = self.transport.get(self._domain, self._ROOTOBJECTTYPE.__name__, guid,
                                       self.serializer.NAME)
+        else:
+            data = self.transport.get_version(self._domain, self._ROOTOBJECTTYPE.__name__, guid, 
+                                        version, self.serializer.NAME)
         
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
 
@@ -260,7 +264,7 @@ class DomainAccessor(object):
         self._parent = client
         return self
 
-def update_rootobject_accessors(cls, clientClass):
+def update_rootobject_accessors(cls=OsisConnection, clientClass=AccessorImpl):
     '''Update the L{OsisConnection} class so all root object types are
     accessible
 
@@ -269,7 +273,6 @@ def update_rootobject_accessors(cls, clientClass):
     class can be set up.
     '''
     logger.info('Updating known RootObjectModel types')
-
     from pymodel import ROOTOBJECT_TYPES as types
 
     ## Remove old accessors

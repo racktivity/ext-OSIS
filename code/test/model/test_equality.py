@@ -37,7 +37,7 @@ import unittest
 import uuid
 import datetime
 
-from osis import model
+import pymodel as model
 
 class TestEquality(unittest.TestCase):
     def _test_simple(self, base):

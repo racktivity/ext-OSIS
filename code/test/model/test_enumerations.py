@@ -6,7 +6,7 @@ except ImportError:
     import nose
     raise nose.SkipTest('No PyMonkey support on this system')
 
-from osis import model
+import pymodel as model
 
 class MyEnum(BaseEnumeration):
     @classmethod
