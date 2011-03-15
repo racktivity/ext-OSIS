@@ -39,11 +39,9 @@ import base64
 import unittest
 
 from osis.server.base import BaseServer
+from osis.server.exceptions import ObjectNotFoundException
 
 def cleanup_environment():
-    from pymodel import ROOTOBJECT_TYPES
-
-    #ROOTOBJECT_TYPES.clear()
     for modulename in sys.modules.keys():
         if modulename.startswith('osis._rootobjects'):
             sys.modules.pop(modulename)
