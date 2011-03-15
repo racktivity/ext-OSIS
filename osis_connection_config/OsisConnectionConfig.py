@@ -34,9 +34,11 @@ class OsisConnectionConfig(ConfigManagementItem):
 
     # Optional implementation of retrieve() method, to be used by find()
     def retrieve(self):
-        from osis import init
-        init(self.params['model_path'])
-        from osis.model.serializers import ThriftSerializer
+        import osis
+        import pymodel
+        pymodel.init_domain(self.params['model_path'])
+        osis.init()
+        from pymodel.serializers import ThriftSerializer
         from osis.client.xmlrpc import XMLRPCTransport
         from osis.client import OsisConnection
         if self.params.has_key('login') and self.params['login']:
