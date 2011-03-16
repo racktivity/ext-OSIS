@@ -1,6 +1,5 @@
-import xmlrpclib
-from pymonkey import q
-from pymonkey.config import ConfigManagementItem, ItemGroupClass
+from pylabs import q
+from pylabs.config import ConfigManagementItem, ItemGroupClass
 
 class OsisConnectionConfig(ConfigManagementItem):
     """
