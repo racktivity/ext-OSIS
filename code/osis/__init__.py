@@ -51,7 +51,7 @@ def init(connectionClass=OsisConnection, clientClass=AccessorImpl):
 
 
 ## Set up binding to PyMonkey logging
-#def _setup_pymonkey_logging():
+#def _setup_pylabs_logging():
 #    '''Relay OSIS log messages to PyMonkey logging if available
 #
 #    OSIS uses the standard Python *logging* module to perform logging. This
@@ -60,7 +60,7 @@ def init(connectionClass=OsisConnection, clientClass=AccessorImpl):
 #    loglevel.
 #    '''
 #    try:
-#        from pymonkey import q
+#        from pylabs import q
 #    except ImportError:
 #        logger.info('No PyMonkey support on this system')
 #        return
@@ -92,5 +92,5 @@ def init(connectionClass=OsisConnection, clientClass=AccessorImpl):
 #    logger.setLevel(logging.DEBUG)
 #    logger.addHandler(pmlogger)
 #
-#_setup_pymonkey_logging()
-#del _setup_pymonkey_logging
+#_setup_pylabs_logging()
+#del _setup_pylabs_logging

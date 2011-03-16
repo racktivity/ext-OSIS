@@ -37,10 +37,10 @@
 import re
 import datetime, time
 
-from pymonkey import q
-from pymonkey.baseclasses.ManagementApplication import ManagementApplication
-from pymonkey.baseclasses import BaseEnumeration
-from pymonkey.db.DBConnection import DBConnection
+from pylabs import q
+from pylabs.baseclasses.ManagementApplication import ManagementApplication
+from pylabs.baseclasses import BaseEnumeration
+from pylabs.db.DBConnection import DBConnection
 from OsisView import OsisView, OsisColumn, OsisType
 from OsisFilterObject import OsisFilterObject
 
@@ -50,7 +50,7 @@ import exceptions
 import traceback
 import uuid
 
-from pymonkey.decorators import deprecated
+from pylabs.decorators import deprecated
 
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """

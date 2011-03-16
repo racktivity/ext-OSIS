@@ -33,13 +33,10 @@
 #
 # </License>
 
-import re
-
-from pymonkey import q
-from pymonkey.baseclasses.BaseEnumeration import BaseEnumeration, EnumerationWithValue
+from pylabs import q
+from pylabs.baseclasses.BaseEnumeration import EnumerationWithValue
 
 class OsisView(object):
-
     def __init__(self, domain, objType, name):
         self.domain = domain
         self.name = name;

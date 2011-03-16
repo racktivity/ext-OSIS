@@ -41,7 +41,7 @@ import os.path
 import base64
 import logging
 
-from pymonkey import q #pylint: disable-msg=F0401
+from pylabs import q #pylint: disable-msg=F0401
 
 from osis.server.base import BaseServer
 from osis.server.exceptions import ObjectNotFoundException

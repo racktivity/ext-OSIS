@@ -43,7 +43,7 @@ from osis.server.exceptions import UnknownSerializerException, \
     UnknownObjectTypeException, ObjectNotFoundException
 #TODO Move this to a more suitable place #pylint: disable-msg=W0511
 from osis.store.OsisFilterObject import OsisFilterObject as Filter
-from pymonkey import q
+from pylabs import q
 from pymodel.serializers import SERIALIZERS
 from pymodel import ROOTOBJECT_TYPES
 

@@ -33,11 +33,7 @@
 #
 # </License>
 
-import re
-
-from pymonkey import q
-from pymonkey.baseclasses.ManagementApplication import ManagementApplication
-from pymonkey.db.DBConnection import DBConnection
+from pylabs import q
 from OsisConnection import OsisConnection
 
 class OsisDB(object):
