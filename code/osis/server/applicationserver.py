@@ -37,7 +37,6 @@
 
 '''OSIS server implementation running in the PyMonkey Applicationserver'''
 
-import os.path
 import base64
 import logging
 
@@ -46,26 +45,21 @@ from pylabs import q #pylint: disable-msg=F0401
 from osis.server.base import BaseServer
 from osis.server.exceptions import ObjectNotFoundException
 
-#TODO fix me
-for dir in q.system.fs.listDirsInDir(q.dirs.appDir):
-    modeldir = q.system.fs.joinPaths(dir, 'model')
-    if q.system.fs.exists(modeldir):
-        domain = q.system.fs.getBaseName(dir)
-        q.pymodel.importDomain(domain, modeldir)
-
 logger = logging.getLogger('osis.server.applicationserver')
 
 class OsisServer(BaseServer):
     '''Implementation of an OSIS server running in the PyMonkey
     Applicationserver'''
 
-    def __init__(self, tasklet_path=None):
+    def __init__(self, model_paths=None, tasklet_path=None):
         '''Initialize the OSIS service
 
+        @param model_paths: Paths where model definitions can be found
+        @type model_paths: list of strings
         @param tasklet_path: Container path of OSIS tasklets
         @type tasklet_path: string
         '''
-        BaseServer.__init__(self, tasklet_path)
+        BaseServer.__init__(self, model_paths, tasklet_path)
 
     @q.manage.applicationserver.expose
     def get(self, domain, objectType, guid, serializer):
@@ -281,4 +275,3 @@ class OsisServer(BaseServer):
         '''
         
         return BaseServer.execute_filter(self, domain, object_type, filter_, view)
-        

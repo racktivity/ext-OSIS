@@ -45,7 +45,7 @@ from osis.server.exceptions import UnknownSerializerException, \
 from osis.store.OsisFilterObject import OsisFilterObject as Filter
 from pylabs import q
 from pymodel.serializers import SERIALIZERS
-from pymodel import ROOTOBJECT_TYPES
+import pymodel
 
 logger = logging.getLogger('osis.server.base') #pylint: disable-msg=C0103
 
@@ -58,17 +58,19 @@ class BaseServer(object):
     serializer, perform input validation and exception handling,...
     '''
     
-    def __init__(self, tasklet_path=None):
+    def __init__(self, model_paths=None, tasklet_path=None):
         '''Initialize the OSIS service
 
+        @param model_paths: Paths where model definitions can be found
+        @type model_paths: list of strings
         @param tasklet_path: Container path of OSIS tasklets
         @type tasklet_path: string
         '''
-        
         tasklet_path = tasklet_path or \
                 os.path.join(os.path.dirname(__file__), 'tasklets')
         self.tasklet_engine = q.getTaskletEngine(tasklet_path)
-    
+        self.load_model_paths(model_paths)
+
     def _get(self, domain, object_type, guid, version, serializer):
         '''Helper method to retrieve a specific version of an object from the
         OSIS object store
@@ -183,7 +185,7 @@ class BaseServer(object):
         '''
 
         try:
-            class_ = ROOTOBJECT_TYPES[domain][object_type]
+            class_ = pymodel.ROOTOBJECT_TYPES[domain][object_type]
         except KeyError:
             raise UnknownObjectTypeException('Object type %s is not known' % \
                                             object_type)
@@ -215,7 +217,7 @@ class BaseServer(object):
         # Even if '' is passed, we want none
         view = view or None
 
-        if object_type not in ROOTOBJECT_TYPES[domain]:
+        if object_type not in pymodel.ROOTOBJECT_TYPES[domain]:
             raise UnknownObjectTypeException('Unknown object type %s' % \
                                              object_type)
 
@@ -249,7 +251,7 @@ class BaseServer(object):
         @param view: name of view to return
         @type view: string
         '''
-        if object_type not in ROOTOBJECT_TYPES[domain]:
+        if object_type not in pymodel.ROOTOBJECT_TYPES[domain]:
             raise UnknownObjectTypeException('Unknown object type %s' % \
                                              object_type)
 
@@ -403,3 +405,16 @@ class BaseServer(object):
             return list()
 
         return params['result']
+
+    def load_model_paths(self, model_paths=None):
+        if model_paths is None:
+            return
+
+        for model_path in model_paths:
+            self.load_model_path(model_path)
+
+    def load_model_path(self, model_path):
+        domain_names = (d for d in os.listdir(model_path) if os.path.isdir(os.path.join(model_path, d)))
+        for domain_name in domain_names:
+            domain_path = os.path.join(model_path, domain_name)
+            pymodel.init(domain_path, domain_name)
