@@ -10,4 +10,6 @@ def main(q, i, params, tags):
     key  = 'osis.%s.%s.%s'  % (domain, type_, params['rootobjectguid'])
     arakoonClient = q.clients.arakoon.getClient('cluster1')
     root = arakoonClient.get(key)
-    return ThriftSerializer.deserialize(ROOTOBJECT_TYPES[domain][type_], root)
+    rootobject =  ThriftSerializer.deserialize(ROOTOBJECT_TYPES[domain][type_], root)
+    params['rootobject'] = rootobject
+    return rootobject
