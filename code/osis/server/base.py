@@ -160,6 +160,7 @@ class BaseServer(object):
         
         # Set up tasklet call parameters
         params = {
+             'domain': domain,
              'rootobjectguid': guid,
              'rootobjecttype': object_type,
              'rootobjectversionguid': None
