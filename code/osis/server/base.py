@@ -68,7 +68,7 @@ class BaseServer(object):
         '''
         tasklet_path = tasklet_path or \
                 os.path.join(os.path.dirname(__file__), 'tasklets')
-        self.tasklet_engine = q.getTaskletEngine(tasklet_path)
+        self.tasklet_engine = q.taskletengine.get(tasklet_path)
         self.load_model_paths(model_paths)
 
     def _get(self, domain, object_type, guid, version, serializer):
