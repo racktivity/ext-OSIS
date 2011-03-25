@@ -244,11 +244,12 @@ class RootObjectAccessor(object): #pylint: disable-msg=R0903
         '''Retrieve the accessor from a connection object'''
         #pylint: disable-msg=W0212
         client = domain._parent
-        accessor = client._accessors.get(self._name, None)
+        key = "%s.%s" % (domain.name, self._name)
+        accessor = client._accessors.get(key, None)
         if not accessor or not isinstance(accessor, self._accessorimpl):
             accessor = self._accessorimpl(client.transport, client.serializer)
             accessor._domain = domain.name
-            client._accessors[self._name] = accessor
+            client._accessors[key] = accessor
 
         return accessor
 
@@ -284,13 +285,18 @@ def update_rootobject_accessors(cls=OsisConnection, clientClass=AccessorImpl):
 
     # update accessors
     for domain_name, domain_ in types.iteritems():
-        
-        domain_acc = DomainAccessor(domain_name)
+        # We need to set the RootObjectAccessor descriptors on a class.
+        # But we don't want all of them on DomainAccessor, because otherwise
+        # we would see the RootObjectAccessors on all DomainAccessors.
+        # So we create a subclass for each domain.
+        class DomainAccessor_(DomainAccessor):
+            pass
         
         for type_ in domain_.itervalues():
             name = getattr(type_, 'PYMODEL_TYPE_NAME', type_.__name__.lower())
             accessor = RootObjectAccessor(name, type_, clientClass)
             logger.debug('Adding new type %s' % name)
-            setattr(DomainAccessor, name, accessor)
+            setattr(DomainAccessor_, name, accessor)
             
+        domain_acc = DomainAccessor_(domain_name)
         setattr(cls, domain_name, domain_acc)
