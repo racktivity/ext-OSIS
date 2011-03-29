@@ -245,9 +245,9 @@ class OsisConnectionGeneric(object):
         schema = self._getSchemeName(domain, objType)
 
         if viewToReturn:
-            sql = "select guid from %s.%s"%(schema, viewToReturn)
+            sql = "select guid from %s.%s" % (schema, viewToReturn)
         else:
-            sql = "select guid from %s.view_%s_list" % (schema, objType)
+            sql = "select guid from %s.%s_view_%s_list" % (schema, domain, objType)
 
 
         
