@@ -87,7 +87,7 @@ class XMLRPCTransport(object):
         @return: Serialized root object instance
         @rtype: string
         '''
-        logger.debug('GET %s %s version %s' % (domain, type_, guid, version))
+        logger.debug('GET %s %s %s version %s' % (domain, type_, guid, version))
         return base64.decodestring(self.proxy.get_version(domain, type_, guid,
                                                           version, serializer))
 
