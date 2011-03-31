@@ -34,23 +34,15 @@
 # </License>
 
 
-import re
-import datetime, time
-
 from pylabs import q
-from pylabs.baseclasses.ManagementApplication import ManagementApplication
 from pylabs.baseclasses import BaseEnumeration
 from pylabs.db.DBConnection import DBConnection
-from OsisView import OsisView, OsisColumn, OsisType
+from OsisView import OsisView
 from OsisFilterObject import OsisFilterObject
 
-from pymodel.serializers import ThriftSerializer
 from pg import ProgrammingError
 import exceptions
 import traceback
-import uuid
-
-from pylabs.decorators import deprecated
 
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
@@ -94,7 +86,6 @@ class _OsisPGTypeConverter(object):
         return pgType
 
     def convertValue(self, pgType, pgValue):
-        pyType = self.convertType(pgType)
         if pgValue == None: return ""
         if pgType in  ('boolean', 'bool'):
             if pgValue.__class__ == bool:
