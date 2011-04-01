@@ -83,6 +83,7 @@ class OsisType(EnumerationWithValue):
 
 OsisType.registerItem("integer", "integer")
 OsisType.registerItem("bigint", "bigint")
+OsisType.registerItem("float", "float")
 OsisType.registerItem("string", "character varying(1024)")
 OsisType.registerItem("text", "text")
 OsisType.registerItem("uuid", "uuid")
