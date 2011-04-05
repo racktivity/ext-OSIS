@@ -43,22 +43,22 @@ from osis.store.OsisFilterObject import OsisFilterObject
 
 logger = logging.getLogger('osis.client.connection') #pylint: disable-msg=C0103
 
-class OsisClient(object):
-    '''Client class to handle one root object type on a server
+# This is a rather poor implementation
+# But at this moment I don't care since everything is a single ton anyway
+class _Client(object):
+    pass
 
-    An extra attribute, C{_ROOTOBJECTTYPE}, is virtual and should be set in
-    subclasses.
-    '''
-    def __init__(self, transport, serializer):
-        '''Initialize a new OSIS root object client
+class _Shelve(object):
+    pass
 
-        @param transport: OSIS client transport
-        @type transport: object
-        @param serializer: Object serializer implementation
-        @type serializer: object
-        '''
+
+class _Accessor(object):
+    def __init__(self, model_type, model, transport, serializer):
         self.transport = transport
+        self._ROOTOBJECTTYPE = model
         self.serializer = serializer
+
+        self.object_type = model_type
 
     def get(self, guid, version=None):
         '''Retrieve a root object with a given GUID from the OSIS server
@@ -67,18 +67,18 @@ class OsisClient(object):
 
         @param guid: GUID of the root object to retrieve
         @type guid: string
-        
+
         @return: Root object instance
         @rtype: L{osis.model.RootObjectModel}
         '''
         #pylint: disable-msg=E1101
         if not version:
-            data = self.transport.get(self._domain, self._ROOTOBJECTTYPE.__name__, guid,
-                                      self.serializer.NAME)
+            data = self.transport.get(self.object_type, guid,
+                self.serializer.NAME)
         else:
-            data = self.transport.get_version(self._domain, self._ROOTOBJECTTYPE.__name__, guid, 
-                                        version, self.serializer.NAME)
-        
+            data = self.transport.get_version(self.object_type, guid, version,
+                self.serializer.NAME)
+
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
 
 
@@ -100,20 +100,17 @@ class OsisClient(object):
 
         @param guid: GUID of the root object to delete
         @type guid: string
-        
+
         @return: True or False, according as the deletion succeeds or fails
         '''
-        return self.transport.delete(self._domain, self._ROOTOBJECTTYPE.__name__, guid)
-        
+        return self.transport.delete(self.object_type, guid)
+
     def save(self, object_):
         '''Save a root object to the server
 
         @param object_: Object to store
         @type object_: L{osis.model.RootObjectModel}
         '''
-        #pylint: disable-msg=E1101
-        type_ = self._ROOTOBJECTTYPE.__name__
-
         # Check whether we should set a GUID
         try:
             guid = object_.guid
@@ -121,7 +118,7 @@ class OsisClient(object):
             guid = None
         if not guid:
             object_.guid = str(uuid.uuid4())
-        
+
         # Keep original version to be able to check for concurrency violations    
         object_._baseversion = object_.version
 
@@ -129,12 +126,12 @@ class OsisClient(object):
         object_.version = str(uuid.uuid4())
 
         data = object_.serialize(self.serializer)
-        
-        result = self.transport.put(self._domain, type_, data, self.serializer.NAME)
-        
+
+        result = self.transport.put(self.object_type, data, self.serializer.NAME)
+
         # If everything is ok, set baseversion to version 
         object_._baseversion = object_.version
-        
+
         return result
 
     def new(self, *args, **kwargs): #pylint: disable-msg=W0142
@@ -142,7 +139,6 @@ class OsisClient(object):
 
         All arguments are handled verbatim to the root object type constructor.
         '''
-        #pylint: disable-msg=E1101
         return self._ROOTOBJECTTYPE(*args, **kwargs)
 
     @staticmethod
@@ -165,14 +161,9 @@ class OsisClient(object):
         @rtype: tuple<string> or L{ViewResultList}
         '''
         #pylint: disable-msg=E1101
-        type_ = self._ROOTOBJECTTYPE.__name__
+        result = self.transport.find(self.object_type, filter_, view)
 
-        result = self.transport.find(self._domain, type_, filter_, view)
-
-        if not view:
-            return result
-        else:
-            return ViewResultList(result)
+        return ViewResultList(result) if view else result
 
     def findAsView(self, filter_, viewName):
         """
@@ -184,119 +175,27 @@ class OsisClient(object):
 
         @return: list of dicts representing the view{col: value}
         """
-        type_ = self._ROOTOBJECTTYPE.__name__
-        result = self.transport.findAsView(self._domain, type_, filter_, viewName)
-        return result
+        return self.transport.findAsView(self.object_type, filter_, viewName)
 
-class OsisConnection(object):
-    '''Connection to an OSIS server
+def generate_client(models, transport, serializer):
+    client = _Client()
 
-    This method provides a connection to an OSIS server, using a given transport
-    instance.
-    '''
-    #pylint: disable-msg=R0903
-    def __init__(self, transport, serializer):
-        '''Initialize a client
+    for model_type, model in models:
+        current = client
+        model_type = tuple(model_type)
 
-        @param transport: OSIS client transport
-        @type transport: object
-        @param serializer: Object serializer implementation
-        @type serializer: object
-        '''
-        self._accessors = dict()
-        self.transport = transport
-        self.serializer = serializer
+        if len(model_type) > 2:
+            for part in model_type[1:-1]:
+                if hasattr(current, part):
+                    current = getattr(current, part)
+                else:
+                    current_ = _Shelve()
+                    setattr(current, part, current_)
+                    current = current_
 
-class AccessorImpl(OsisClient):
-        '''Implementation of an specific L{OsisClient} root object
-        accessor'''
-        pass
+                assert isinstance(current, _Shelve)
 
-class RootObjectAccessor(object): #pylint: disable-msg=R0903
-    '''Descriptor returning a correct L{OsisClient} instance for every root
-    object exposed on L{OsisConnection}
+        accessor = _Accessor(model_type, model, transport, serializer)
+        setattr(current, model_type[-1], accessor)
 
-    Every L{OsisConnection} instance got an attribute, C{_accessors}, which, for
-    every root object type, can contain an L{OsisClient} instance which will
-    provide the necessary methods to retrieve the corresponding root objects
-    from the server.
-    '''
-
-
-    def __init__(self, name, type_, clientClass=AccessorImpl):
-        '''Initialize a new root object accessor
-
-        @param name: Name of the accessor ('clients' in 'connection.clients')
-        @type name: string
-        @param type_: Root object type to provide access to
-        @type type_: type
-        '''
-        logger.info('Creating root object accessor %s' % name)
-        self._name = name
-        class AccessorImpl_(clientClass):
-            '''Implementation of an specific L{OsisClient} root object
-            accessor'''
-            _ROOTOBJECTTYPE = type_
-
-        self._accessorimpl = AccessorImpl_
-
-    def __get__(self, domain, type_=None): #pylint: disable-msg=W0613
-        '''Retrieve the accessor from a connection object'''
-        #pylint: disable-msg=W0212
-        client = domain._parent
-        key = "%s.%s" % (domain.name, self._name)
-        accessor = client._accessors.get(key, None)
-        if not accessor or not isinstance(accessor, self._accessorimpl):
-            accessor = self._accessorimpl(client.transport, client.serializer)
-            accessor._domain = domain.name
-            client._accessors[key] = accessor
-
-        return accessor
-
-class DomainAccessor(object):
-    '''Dummy object to group RootObjectAccessors per domain'''
-    
-    def __init__(self, name):
-        self.name = name
-    
-    def __get__(self, client, type_=None): #pylint: disable-msg=W0613
-        '''Make sure we know through which object we are being accessed'''
-        #pylint: disable-msg=W0212
-        self._parent = client
-        return self
-
-def update_rootobject_accessors(cls=OsisConnection, clientClass=AccessorImpl):
-    '''Update the L{OsisConnection} class so all root object types are
-    accessible
-
-    Whenever the L{osis.ROOTOBJECT_TYPES} dictionary is updated, this function
-    should be called so the corresponding attributes on the L{OsisConnection}
-    class can be set up.
-    '''
-    logger.info('Updating known RootObjectModel types')
-    from pymodel import ROOTOBJECT_TYPES as types
-
-    ## Remove old accessors
-    for attrname in dir(cls):
-        attr = cls.__dict__.get(attrname, None)
-        if attr and isinstance(attr, RootObjectAccessor) and not any([attrname == getattr(type_,  'PYMODEL_TYPE_NAME', type_.__name__.lower()) for type_ in types.itervalues()]):
-            logger.debug('Removing old type %s' % attrname)
-            delattr(cls, attrname)
-
-    # update accessors
-    for domain_name, domain_ in types.iteritems():
-        # We need to set the RootObjectAccessor descriptors on a class.
-        # But we don't want all of them on DomainAccessor, because otherwise
-        # we would see the RootObjectAccessors on all DomainAccessors.
-        # So we create a subclass for each domain.
-        class DomainAccessor_(DomainAccessor):
-            pass
-        
-        for type_ in domain_.itervalues():
-            name = getattr(type_, 'PYMODEL_TYPE_NAME', type_.__name__.lower())
-            accessor = RootObjectAccessor(name, type_, clientClass)
-            logger.debug('Adding new type %s' % name)
-            setattr(DomainAccessor_, name, accessor)
-            
-        domain_acc = DomainAccessor_(domain_name)
-        setattr(cls, domain_name, domain_acc)
+    return client

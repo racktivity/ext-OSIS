@@ -56,11 +56,9 @@ class XMLRPCTransport(object):
         if service_name:
             self.proxy = getattr(self.proxy, service_name)
 
-    def get(self, domain, type_, guid, serializer):
+    def get(self, object_type, guid, serializer):
         '''Retrieve an serialized object from the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param guid: Root object GUID
         @type guid: string
         @param serializer: Name of the serialization method being used
@@ -69,14 +67,12 @@ class XMLRPCTransport(object):
         @return: Serialized root object instance
         @rtype: string
         '''
-        logger.debug('GET %s %s' % (type_, guid))
-        return base64.decodestring(self.proxy.get(domain, type_, guid, serializer))
+        logger.debug('GET %s %s' % (object_type, guid))
+        return base64.decodestring(self.proxy.get(object_type, guid, serializer))
 
-    def get_version(self, domain, type_, guid, version, serializer):
+    def get_version(self, object_type, guid, version, serializer):
         '''Retrieve an serialized object from the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param guid: Root object GUID
         @type guid: string
         @param version: GUID of the object version to retrieve
@@ -87,9 +83,9 @@ class XMLRPCTransport(object):
         @return: Serialized root object instance
         @rtype: string
         '''
-        logger.debug('GET %s %s %s version %s' % (domain, type_, guid, version))
-        return base64.decodestring(self.proxy.get_version(domain, type_, guid,
-                                                          version, serializer))
+        logger.debug('GET %s %s version %s' % (object_type, guid, version))
+        return base64.decodestring(self.proxy.get_version(object_type, guid,
+            version, serializer))
 
     def runQuery(self, query):
         '''Run query from OSIS server
@@ -103,24 +99,20 @@ class XMLRPCTransport(object):
 
         return self.proxy.runQuery(query)
 
-    def delete(self, domain, type_, guid):
+    def delete(self, object_type, guid):
         '''Delete a serialized object from the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param guid: Root object GUID
         @type guid: string
 
         @return: True or False, according as the deletion succeeds or fails.
         '''
-        logger.debug('DELETE %s %s %s' % (domain, type_, guid))
-        return self.proxy.delete(domain, type_, guid)
+        logger.debug('DELETE %s %s' % (object_type, guid))
+        return self.proxy.delete(object_type, guid)
 
-    def delete_version(self, domain, type_, guid, version):
+    def delete_version(self, object_type, guid, version):
         '''Delete a serialized object from the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param guid: Root object GUID
         @type guid: string
         @param version: GUID of the object version to delete
@@ -128,29 +120,25 @@ class XMLRPCTransport(object):
 
         @return: True or False, according as the deletion succeeds or fails.
         '''
-        logger.debug('DELETE %s %s %s version %s' % (domain, type_, guid, version))
-        return self.proxy.delete_version(domain, type_, guid, version)
+        logger.debug('DELETE %s %s %s version %s' % (object_type, guid, version))
+        return self.proxy.delete_version(object_type, guid, version)
 
 
-    def put(self, domain, type_, data, serializer):
+    def put(self, object_type, data, serializer):
         '''Store a serialized object to the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param data: Serialized object data
         @type data: string
         @param serializer: Name of the serialization method being used
         @type serializer: string
         '''
         data = base64.encodestring(data)
-        logger.debug('PUT %s %s' % (domain, type_))
-        self.proxy.put(domain, type_, data, serializer)
+        logger.debug('PUT %s' % (object_type, ))
+        self.proxy.put(object_type, data, serializer)
 
-    def find(self, domain, type_, filter_, view):
+    def find(self, object_type, filter_, view):
         '''Perform a filter operation on the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param filter_: Filter definition
         @type filter_: L{OsisFilterObject}
         @param view: View to return
@@ -162,15 +150,13 @@ class XMLRPCTransport(object):
         filter_data = filter_.filters
 
         if view:
-            return self.proxy.find(domain, type_, filter_data, view)
+            return self.proxy.find(object_type, filter_data, view)
         else:
-            return self.proxy.find(domain, type_, filter_data)
+            return self.proxy.find(object_type, filter_data)
 
-    def findAsView(self, domain, type_, filter_, view):
+    def findAsView(self, object_type, filter_, view):
         '''Perform a filter operation on the server
 
-        @param type_: Root object type name
-        @type type_: string
         @param filter_: Filter definition
         @type filter_: L{OsisFilterObject}
         @param view: View to return
@@ -179,6 +165,4 @@ class XMLRPCTransport(object):
         @return: List of GUIDs or OsisList of data
         @rtype: list
         '''
-        filter_data = filter_.filters
-
-        return self.proxy.findAsView(domain, type_, filter_data, view)
+        return self.proxy.findAsView(object_type, filter_.filters, view)

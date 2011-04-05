@@ -37,17 +37,14 @@
 
 
 import logging
-from client.connection import AccessorImpl
-from client.connection import OsisConnection
-import osis
 
 logger = logging.getLogger('osis') #pylint: disable-msg=C0103
 
 #ROOTOBJECT_TYPES = dict()
 
-def init(connectionClass=OsisConnection, clientClass=AccessorImpl):
-    '''Initialize the OSIS library'''
-    osis.client.connection.update_rootobject_accessors(connectionClass, clientClass)
+#def init(connectionClass=OsisConnection, clientClass=AccessorImpl):
+#    '''Initialize the OSIS library'''
+#    osis.client.connection.update_rootobject_accessors(connectionClass, clientClass)
 
 
 ## Set up binding to PyMonkey logging

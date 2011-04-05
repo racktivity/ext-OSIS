@@ -34,4 +34,3 @@
 # </License>
 
 '''OSIS client implementation package'''
-from osis.client.connection import OsisConnection
