@@ -351,7 +351,7 @@ class OsisConnectionGeneric(object):
         return True
 
 
-    def viewSave(self, domain, objType, viewName, guid, version, fields):
+    def viewSave(self, domain, objType, viewName, guid, versionguid, fields):
         """
         Add a new row to the view
 
@@ -362,6 +362,8 @@ class OsisConnectionGeneric(object):
         @param versionguid : unique identifier indicating the version of the object (OBSOLETED)
         @param fields : dict containing the field:values
         """
+        # Remove current entry (if any)
+        self.viewDelete(domain, objType, viewName, guid, versionguid)
         
         schema = self._getSchemeName(domain, objType)
         
