@@ -44,6 +44,8 @@ from pg import ProgrammingError
 import exceptions
 import traceback
 
+import sqlalchemy
+
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
 
@@ -103,6 +105,9 @@ class OsisConnectionGeneric(object):
     def __init__(self):
         self._dbConn = None
         self._login = None
+
+        self._sqlalchemy_engine = None
+        self._sqlalchemy_metadata = None
 
     def connect(self, ip, db, login, passwd):
         """
@@ -207,6 +212,18 @@ class OsisConnectionGeneric(object):
             return True
         else:
             return False
+
+    def _find_table(self, schema, name):
+        try:
+            full_name = '%s.%s' % (schema, name)
+            return self._sqlalchemy_metadata.tables[full_name]
+        except KeyError:
+            pass
+
+        self._sqlalchemy_metadata.reflect(
+            bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+
+        return self._sqlalchemy_metadata.tables[full_name]
 
     def objectsFind(self, domain, objType, filterobject, viewToReturn):
         """
@@ -364,33 +381,36 @@ class OsisConnectionGeneric(object):
         """
         # Remove current entry (if any)
         self.viewDelete(domain, objType, viewName, guid, versionguid)
-        
-        schema = self._getSchemeName(domain, objType)
-        
-        newViewGuid = q.base.idgenerator.generateGUID()
 
+        # Prepare values
+        newViewGuid = q.base.idgenerator.generateGUID()
         if not isinstance(fields, list):
             fields = [fields,]
-        
+
+        schema = self._getSchemeName(domain, objType)
+
+        # Add new entry
+        table = self._find_table(schema, viewName)
+
         for field in fields:
-            fieldnames = "guid, viewguid"
-            values = "'%s', '%s'"%(guid, newViewGuid)        
-            for itemKey in field.iterkeys():
-                fieldnames = "%s, %s"%(fieldnames, itemKey)
-                if field[itemKey]:
-                    if type(field[itemKey]) is str:
-                        values = "%s, '%s'"%(values,  self._escape(field[itemKey]))
-                    else:
-                        values = "%s, '%s'"%(values,  field[itemKey])
-                else:
-                    values = "%s, %s"%(values, self._generateSQLString(field[itemKey]))
+            # Add missing field data
+            field.update({
+                'guid': guid,
+                'viewguid': newViewGuid,
+            })
 
-            sql = "insert into %s.%s (%s) VALUES (%s)"%(schema, viewName, fieldnames, values)
+            for k, v in field.iteritems():
+                if isinstance(v, BaseEnumeration):
+                    field[k] = str(v)
 
+            query = table.insert().values(values=field)
+
+            result = None
             try:
-                self.__executeQuery(sql, False)
-            except ProgrammingError, ex:
-                raise OsisException(sql, ex)
+                result = self._sqlalchemy_engine.execute(query, field)
+            finally:
+                if result:
+                    result.close()
 
     def _generateSQLString(self, value):
         if value == None:
@@ -514,10 +534,28 @@ class OsisConnectionGeneric(object):
         if getdict and query:
             return query.dictresult() if hasattr(query, 'dictresult') else dict()
 
+_SA_ENGINES = dict()
+
 class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
         self._dbConn = DBConnection(ip, db, login, passwd)
         self._login = login
+
+        dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
+            'host': ip,
+            'user': login,
+            'password': passwd,
+            'db': db,
+        }
+
+        if dsn in _SA_ENGINES:
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+        else:
+            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn)
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+
+        self._sqlalchemy_metadata = sqlalchemy.MetaData()
+
         return dict()
 
 class OsisConnectionPG8000(OsisConnectionGeneric):
