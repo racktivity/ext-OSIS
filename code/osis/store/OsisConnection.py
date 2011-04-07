@@ -228,7 +228,7 @@ class OsisConnectionGeneric(object):
 
         return self._sqlalchemy_metadata.tables[full_name]
 
-    def objectsFind(self, domain, objType, filterobject, viewToReturn):
+    def objectsFind(self, domain, objType, filterobject, viewToReturn=None):
         """
         returns a list of matching guids according to the supplied fitlerobject filters
 
@@ -321,7 +321,7 @@ class OsisConnectionGeneric(object):
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        cols, rows = self.objectsFind(objType, filterObject, viewName)
+        cols, rows = self.objectsFind(domain, objType, filterObject, viewName)
 
         return tuple(
             dict((col[0], row[i]) for (i, col) in enumerate(cols)) for row in rows)
