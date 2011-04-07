@@ -46,6 +46,9 @@ import traceback
 
 import sqlalchemy
 
+def get_table_name(domain, objType):
+    return "%s_view_%s_list" % (domain, objType)
+
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
 
@@ -234,55 +237,80 @@ class OsisConnectionGeneric(object):
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        
-        results = self._find(domain, objType, filterobject, viewToReturn)
-
-        if viewToReturn:
-            q.logger.log("Building view %s"%viewToReturn ,3)
-            results = self._getViewResults(domain, objType, viewToReturn, results)
-
-        return results
-
-    def _find(self, domain, objType, filterobject, viewToReturn):
-        '''
-        @todo: remove ugly hack for find without view!
-        
-        '''
-        results = []
-        
         schema = self._getSchemeName(domain, objType)
-
         if viewToReturn:
-            sql = "select guid from %s.%s" % (schema, viewToReturn)
+            table_name = viewToReturn
         else:
-            sql = "select guid from %s.%s_view_%s_list" % (schema, domain, objType)
+            table_name = get_table_name(domain, objType)
 
+        # Step 1: turn the filters into a more sane datastructure
+        filters = set()
+        for filter_ in filterobject.filters:
+            view = filter_.keys()[0]
+            field = filter_[view].keys()[0]
+            value, exact = filter_[view][field]
 
-        
-        rawdata = self.__executeQuery(sql)
+            filters.add((view, field, value, exact, ))
 
-        for row in rawdata:
-            results.append(row['guid'])
+        filters = tuple(filters)
 
-        filterQueries = dict()
+        # Step 2: Create list of values to retrieve
+        table = self._find_table(schema, table_name)
+        fields = []
+        for c in table.c:
+            # Convert datetime fields to str for backwards compatibility
+            if isinstance(c.type, (sqlalchemy.types.DATETIME,
+                              sqlalchemy.types.TIMESTAMP,
+                              sqlalchemy.types.DATE,
+                              sqlalchemy.types.TIME,)):
+                fields.append(sqlalchemy.sql.cast(c, sqlalchemy.types.VARCHAR))
+            else:
+                fields.append(c)
 
-        for item in filterobject.filters:
-            view = item.keys()[0]
-            columns = self._getColumns(domain, objType, view)
-            value = item.get(view)
-            field = value.keys()[0]
-            fieldtype = columns.get(field, None)
-            
-            if not fieldtype:raise OsisException('columns.get(%s) from view %s.%s'%(fieldtype, schema, view), 'Column %s does not exist in view %s.%s'%(field, objType, view))
-            fieldvalue, exactMatch = value.get(field)
-            
-            query = filterQueries.get(view, list())
-            query.append(self._generateSQLCondition(domain, objType, view, field , fieldvalue, fieldtype, exactMatch))
-            filterQueries[view] = query
+        # TODO Column type names?! I don't get why we need this anyway
+        coldefs = tuple((c.name, 'string') for c in table.c)
 
-        if filterQueries:results = self._getFiltersResults(domain, objType, filterQueries)
-        
-        return list(set(results))
+        # Step 3: Set up joins
+        from_obj = reduce(
+            lambda f, t: f.join(t, t.c.guid == table.c.guid),
+            set(self._find_table(schema, filter_[0]) for filter_ in filters if filter_[0] != table_name),
+            table)
+
+        # Step 4: Create 'where' clause
+        def create_clause((view, field,value, exact, )):
+            table = self._find_table(schema, view)
+            col = table.c[field]
+
+            if isinstance(col.type,
+                (sqlalchemy.types.VARCHAR, sqlalchemy.types.NVARCHAR,)) and not exact:
+                return (col.like('%%%s%%' % value))
+            else:
+                return (col == value)
+
+        if filters:
+            base = create_clause(filters[0])
+            where_clause = reduce(lambda w, f: w & create_clause(f),
+                filters[1:], base)
+        else:
+            where_clause = None
+
+        # Step 4: Set up basic select query
+        query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
+
+        # Step 5: Execute query and return result
+        result = None
+        try:
+            result = self._sqlalchemy_engine.execute(query)
+
+            if not viewToReturn:
+                return tuple(row['guid'] for row in result)
+            else:
+                rows = tuple(tuple(row.values()) for row in result)
+                return coldefs, rows
+
+        finally:
+            if result:
+                result.close()
 
     def objectsFindAsView(self, domain,  objType, filterObject, viewName):
         """
@@ -293,8 +321,11 @@ class OsisConnectionGeneric(object):
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        results = self._find(domain, objType, filterObject, viewName)
-        return self._getViewResultAsDict(domain, objType, viewName, results)
+        cols, rows = self.objectsFind(objType, filterObject, viewName)
+
+        return tuple(
+            dict((col[0], row[i]) for (i, col) in enumerate(cols)) for row in rows)
+
 
     def getFilterObject(self):
         """
@@ -411,123 +442,6 @@ class OsisConnectionGeneric(object):
             finally:
                 if result:
                     result.close()
-
-    def _generateSQLString(self, value):
-        if value == None:
-            return 'NULL'
-        if q.basetype.integer.check(value):
-            return value
-        if q.basetype.float.check(value):
-            return value
-        return "'%s'"% value
-
-    def _generateSQLCondition(self, domain, objType, view, field, value, fieldtype, exactMatch=False):
-        
-        schema = self._getSchemeName(domain, objType)
-         
-        ret = ""
-        if (isinstance(value,dict) and value.has_key('_pm_enumeration_name') and value['_pm_enumeration_name'] == 'None') or (fieldtype in ('uuid') and value in (None, "")):
-            ret = "%s.%s.%s is NULL"%(schema,view,field)
-        elif fieldtype in  ('uuid', 'bool',):
-            ret = "%s.%s.%s = '%s'"%(schema,view,field,value)
-        elif fieldtype in ('character varying', 'text', 'datetime'):
-            field = '%s.%s.%s'%(schema,view,field)
-            if fieldtype in ('datetime'):
-                field = 'cast(%s as varchar)' % field
-            if exactMatch:
-                ret = "%s = '%s'"%(field, self._escape(value))
-            else:
-                ret = "%s like '%%%s%%'"%(field, self._escape(value))
-        else:
-            if q.basetype.integer.check(value) or q.basetype.float.check(value):
-                ret = "%s.%s.%s = %s"%(schema,view,field,value)
-
-        return ret
-
-    def _getViewResultAsDict(self, domain, objType, view, results):
-        if not results:
-            return list()
-
-        columns = self._getColumns(domain, objType, view)
-        dataFound = self._getViewData(domain, objType, view, results)
-
-        for data in dataFound:
-            for columnName in [col for col in data if columns[col] in osisPGTypeConverter.requiresConvert]:
-                data[columnName] = osisPGTypeConverter.convertValue(columns[columnName], data[columnName])
-
-        return dataFound
-
-    def _getViewResults(self, domain, objType, view, results):
-        columns = self._getColumns(domain, objType, view)
-        coldef = list()
-
-        for colName, colType in columns.iteritems():
-            coldef.append((colName, osisPGTypeConverter.convertType(colType)))
-
-
-        #no results to retrieve, just return the view definition
-        if not results:
-            return tuple(coldef), tuple()
-
-        #retrieve view data
-
-        rawdata = self._getViewData(domain, objType, view, results)
-
-        return tuple(coldef), tuple(rawdata)
-
-
-    def _getColumns(self, domain, objType, view):
-        
-        schema = self._getSchemeName(domain, objType)
-        
-        columns = self._dbConn.listColumns(view, schema)
-        return columns
-
-
-    # @todo: remove reference to viewguid!
-    def _getViewData(self, domain, objType, view, results):
-        
-        schema = self._getSchemeName(domain, objType)
-        
-        viewname = "%s.%s"%(schema, view)
-        viewguid = "%s.guid"%viewname
-
-        guids = ','.join("'%s'"%r for r in results)
-        sql = """
-        select %(viewname)s.* from %(viewname)s
-        where %(viewguid)s in (%(guids)s)"""%{
-                'viewname':viewname,
-                'viewguid':viewguid,
-                'guids':guids}
-
-        rawdata = self.__executeQuery(sql)
-        return rawdata
-
-    def _getFiltersResults(self, domain, objType, filterQueries):
-        
-        schema = self._getSchemeName(domain, objType)
-        
-        conditions = list()
-        sql = ""
-        for index, view in enumerate(filterQueries):
-            conditions.extend(filterQueries[view])
-            if index == 0:
-                firstview = view
-                sql = "select %(obj)s.%(firstview)s.guid from %(obj)s.%(firstview)s"%{'obj':schema, 'firstview':firstview}
-                continue
-            sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':schema, 'view':view, 'firstview': firstview}
-    
-        if not sql: return list()
-        #sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \
-        #                                                                           'firstview':firstview}
-        sql += " where %s"%(" and ".join(conditions))
-        result = self.__executeQuery(sql)
-        return [row['guid'] for row in result]
-
-    def _escape(self, pgstr):
-        pgstr = pgstr.replace("'", "\\'")
-        return pgstr
-
 
     def __executeQuery(self, query, getdict= True):
         query = self._dbConn.sqlexecute(query)
