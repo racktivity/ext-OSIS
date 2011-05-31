@@ -43,6 +43,7 @@ from OsisFilterObject import OsisFilterObject
 from pg import ProgrammingError
 import exceptions
 import traceback
+import threading
 
 import sqlalchemy
 
@@ -108,6 +109,7 @@ class OsisConnectionGeneric(object):
     def __init__(self):
         self._dbConn = None
         self._login = None
+        self._lock = threading.Lock()
 
         self._sqlalchemy_engine = None
         self._sqlalchemy_metadata = None
@@ -444,7 +446,8 @@ class OsisConnectionGeneric(object):
                     result.close()
 
     def __executeQuery(self, query, getdict= True):
-        query = self._dbConn.sqlexecute(query)
+        with self._lock:
+            query = self._dbConn.sqlexecute(query)
         if getdict and query:
             return query.dictresult() if hasattr(query, 'dictresult') else dict()
 
