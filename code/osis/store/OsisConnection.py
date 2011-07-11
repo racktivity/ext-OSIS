@@ -110,6 +110,7 @@ class OsisConnectionGeneric(object):
         self._dbConn = None
         self._login = None
         self._lock = threading.Lock()
+        self._lock_metadata = threading.Lock()
 
         self._sqlalchemy_engine = None
         self._sqlalchemy_metadata = None
@@ -148,7 +149,7 @@ class OsisConnectionGeneric(object):
         """
         objTypeName = objType.__class__.__name__
         self.createObjectTypeByName(domain, objTypeName)
-        
+
     def createObjectTypeByName(self, domain,  objTypeName):
         '''
         @param domain : domain to create the object in
@@ -171,9 +172,9 @@ class OsisConnectionGeneric(object):
             return
 
         schema = self._getSchemeName(domain, name)
-        
+
         sqls = ['CREATE SCHEMA %s' % schema]
-        
+
         for sql in sqls:
             self.__executeQuery(sql, False)
 
@@ -185,15 +186,15 @@ class OsisConnectionGeneric(object):
         @param name : name of the schema to check
         """
         schema = self._getSchemeName(domain, name)
-        
+
         sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'" % schema
         result = self.__executeQuery(sql)
-        
+
         if result:
             return True
         else:
             return False
-        
+
     def _getSchemeName(self, domain, name):
         return '%s_%s' % (domain, name)
 
@@ -201,16 +202,16 @@ class OsisConnectionGeneric(object):
         """
         Checks if the requested view exists in the supplied schema
 
-        @param domain : domain where the view lives 
+        @param domain : domain where the view lives
         @param objType : the object type to check
         @param viewname : name of the view to check
         """
-        
+
         if not self.schemeExists(domain, objType):
             return False
-        
+
         schema = self._getSchemeName(domain, objType)
-        
+
         sql =  "select distinct schemaname, tablename from pg_tables where schemaname = '%s' and tablename = '%s'"%(schema, viewname)
         result = self.__executeQuery(sql)
         if result:
@@ -219,16 +220,22 @@ class OsisConnectionGeneric(object):
             return False
 
     def _find_table(self, schema, name):
-        try:
-            full_name = '%s.%s' % (schema, name)
+        full_name = '%s.%s' % (schema, name)
+
+        if full_name in self._sqlalchemy_metadata.tables:
+            self._lock_metadata.acquire(True) # make sure there are no writes busy
+            self._lock_metadata.release()
             return self._sqlalchemy_metadata.tables[full_name]
-        except KeyError:
-            pass
 
-        self._sqlalchemy_metadata.reflect(
-            bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+        else:
+            self._lock_metadata.acquire(True)
+            try:
+                self._sqlalchemy_metadata.reflect(
+                    bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+            finally:
+                self._lock_metadata.release()
 
-        return self._sqlalchemy_metadata.tables[full_name]
+            return self._sqlalchemy_metadata.tables[full_name]
 
     def objectsFind(self, domain, objType, filterobject, viewToReturn=None):
         """
@@ -317,8 +324,8 @@ class OsisConnectionGeneric(object):
     def objectsFindAsView(self, domain,  objType, filterObject, viewName):
         """
         Find
-        
-        @param domain : the object Type's domain 
+
+        @param domain : the object Type's domain
         @param objType : type of object to search
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
@@ -339,7 +346,7 @@ class OsisConnectionGeneric(object):
         """
         Creates and returns a new view object
 
-        @param domain : the object Type's domain 
+        @param domain : the object Type's domain
         @param objType : the object type on which to add the view
         @param viewName : the name of the view
         """
@@ -365,13 +372,13 @@ class OsisConnectionGeneric(object):
     def viewDestroy(self, domain, objType, viewName):
         """
         Removes a view from the database
-        
-        @param domain : the object Type's domain 
+
+        @param domain : the object Type's domain
         @param objType : the type of object to destroy
         @param viewName : Osisview object to destroy
         """
         schema = self._getSchemeName(domain, objType)
-        
+
         if not self.viewExists(domain, objType, viewName):
             q.eventhandler.raiseCriticalError('%s.%s not found.'%(schema, viewName))
             return
@@ -384,7 +391,7 @@ class OsisConnectionGeneric(object):
         """
         Removes row(s) with the supplied guid from the view
 
-        @param domain : the object Type's domain  
+        @param domain : the object Type's domain
         @param objType : the object Type name
         @param viewName : the view from which to remove a row
         @param viewguid : unique identifier (GUID) for the object
@@ -394,9 +401,9 @@ class OsisConnectionGeneric(object):
         """
 
         schema = self._getSchemeName(domain, objType)
-        
+
         sql = "delete from %s.%s where guid='%s'" % (schema, viewName, guid)
-        
+
         self.__executeQuery(sql, False)
         return True
 
@@ -405,7 +412,7 @@ class OsisConnectionGeneric(object):
         """
         Add a new row to the view
 
-        @param domain : the object Type's domain 
+        @param domain : the object Type's domain
         @param objType : the object Type name
         @param viewName : the view from which to remove a row
         @param guid : unique identifier for the object
