@@ -34,11 +34,20 @@
 # </License>
 
 import re
+try:
+    import threading
+except ImportError:
+    threading = None
 
 from pymonkey import q
 from pymonkey.baseclasses.ManagementApplication import ManagementApplication
 from pymonkey.db.DBConnection import DBConnection
 from OsisConnection import OsisConnection
+
+if threading:
+    _CONNECTION_TLS = threading.local()
+else:
+    _CONNECTION_TLS = None
 
 class OsisDB(object):
     
@@ -114,18 +123,16 @@ class OsisDB(object):
 
         @param name : connection name
         """
-        
-        # Initialize connections if not available
-        if not hasattr(self, '_connections'):
-            q.logger.log('>>> Initializing connections', 8)
-            self._connections = {}
-            
-        # Use existing connection if available
-        if name in self._connections:
-            q.logger.log('>>> Reusing connection %s' % name, 8)
-            return self._connections[name]
-                  
-        
+
+        if _CONNECTION_TLS:
+            if not hasattr(_CONNECTION_TLS, 'connections'):
+                _CONNECTION_TLS.connections = {}
+
+            try:
+                return _CONNECTION_TLS.connections[(name, usePG8000)]
+            except KeyError:
+                pass
+
         osisConn = OsisConnection(usePG8000)
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
@@ -139,10 +146,9 @@ class OsisDB(object):
         login = ini.getValue(name,'login')
         passwd = ini.getValue(name,'passwd')
         osisConn.connect(ip, database, login, passwd)
-        
-        # Cache connection
-        #q.logger.log('>>> Caching connection %s' % name, 8)
-        #self._connections[name] = osisConn
-        
-        return osisConn
 
+        # Cache connection
+        if _CONNECTION_TLS:
+            _CONNECTION_TLS.connections[(name, usePG8000)] = osisConn
+
+        return osisConn
