@@ -140,6 +140,10 @@ class OsisConnectionGeneric(object):
         """
 
         return self.viewObjectExists(objType, 'main', guid, version)
+    
+    def resetConnection(self):
+        _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
+        self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
 
     def viewObjectExists(self, objType, viewName, guid, version):
         """
@@ -331,8 +335,13 @@ class OsisConnectionGeneric(object):
         except KeyError:
             pass
 
-        self._sqlalchemy_metadata.reflect(
-            bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+        try:
+            self._sqlalchemy_metadata.reflect(
+                bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+        except:
+            self.resetConnection()
+            self._sqlalchemy_metadata.reflect(
+                bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
 
         return self._sqlalchemy_metadata.tables[full_name]
 
@@ -406,21 +415,26 @@ class OsisConnectionGeneric(object):
         # Step 4: Set up basic select query
         query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
 
-        # Step 5: Execute query and return result
-        result = None
-        try:
-            result = self._sqlalchemy_engine.execute(query)
-
+        def getResult(result):
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
                 rows = tuple(tuple(row.values()) for row in result)
                 return coldefs, rows
 
+        # Step 5: Execute query and return result
+        result = None
+        try:
+            result = self._sqlalchemy_engine.execute(query)
+            q.logger.log('************* %s' % [row for row in result], 1)
+            getResult(result)
+        except:
+            self.resetConnection()
+            result = self._sqlalchemy_engine.execute(query)
+            return getResult(result)
         finally:
             if result:
                 result.close()
-
 
     def objectsFindAsView(self, objType, filterObject, viewName):
         """
@@ -538,10 +552,12 @@ class OsisConnectionGeneric(object):
             result = None
             try:
                 result = self._sqlalchemy_engine.execute(query, field)
+            except:
+                self.resetConnection()
+                result = self._sqlalchemy_engine.execute(query, field)
             finally:
                 if result:
                     result.close()
-
 
     def _generateSQLString(self, value):
         if value == None:
@@ -667,18 +683,17 @@ class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
         self._dbConn = DBConnection(ip, db, login, passwd)
         self._login = login
 
-        dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
+        self._dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
             'host': ip,
             'user': login,
             'password': passwd,
             'db': db,
         }
 
-        if dsn in _SA_ENGINES:
-            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+        if self._dsn in _SA_ENGINES:
+            self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
         else:
-            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn)
-            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+            self.resetConnection()
 
         self._sqlalchemy_metadata = sqlalchemy.MetaData()
 
