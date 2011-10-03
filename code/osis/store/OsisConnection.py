@@ -426,7 +426,6 @@ class OsisConnectionGeneric(object):
         result = None
         try:
             result = self._sqlalchemy_engine.execute(query)
-            q.logger.log('************* %s' % [row for row in result], 1)
             getResult(result)
         except:
             self.resetConnection()
