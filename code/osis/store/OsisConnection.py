@@ -140,6 +140,10 @@ class OsisConnectionGeneric(object):
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
+    def resetConnection(self):
+        _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
+        self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
+
     def createObjectType(self, domain, objType):
         """
         Creates the model structure on the database
@@ -232,6 +236,10 @@ class OsisConnectionGeneric(object):
             try:
                 self._sqlalchemy_metadata.reflect(
                     bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+            except:
+                self.resetConnection()
+                self._sqlalchemy_metadata.reflect(
+                    bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
             finally:
                 self._lock_metadata.release()
 
@@ -303,20 +311,24 @@ class OsisConnectionGeneric(object):
         else:
             where_clause = None
 
+        result = None
         # Step 4: Set up basic select query
         query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
 
-        # Step 5: Execute query and return result
-        result = None
-        try:
-            result = self._sqlalchemy_engine.execute(query)
-
+        def getResult():
+			result = self._sqlalchemy_engine.execute(query)
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
                 rows = tuple(tuple(row.values()) for row in result)
                 return coldefs, rows
 
+        try:
+            # Step 5: Execute query and return result
+            return getResult()
+        except:
+            self.resetConnection()
+            return getResult()
         finally:
             if result:
                 result.close()
@@ -448,6 +460,9 @@ class OsisConnectionGeneric(object):
             result = None
             try:
                 result = self._sqlalchemy_engine.execute(query, field)
+            except:
+                self.resetConnection()
+                result = self._sqlalchemy_engine.execute(query, field)
             finally:
                 if result:
                     result.close()
@@ -465,18 +480,17 @@ class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
         self._dbConn = DBConnection(ip, db, login, passwd)
         self._login = login
 
-        dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
+        self._dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
             'host': ip,
             'user': login,
             'password': passwd,
             'db': db,
         }
 
-        if dsn in _SA_ENGINES:
-            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+        if self._dsn in _SA_ENGINES:
+            self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
         else:
-            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn)
-            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+            self.resetConnection()
 
         self._sqlalchemy_metadata = sqlalchemy.MetaData()
 
