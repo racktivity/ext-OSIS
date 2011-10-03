@@ -316,7 +316,7 @@ class OsisConnectionGeneric(object):
         query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
 
         def getResult():
-			result = self._sqlalchemy_engine.execute(query)
+            result = self._sqlalchemy_engine.execute(query)
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
