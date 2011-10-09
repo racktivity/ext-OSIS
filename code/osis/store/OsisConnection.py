@@ -426,7 +426,7 @@ class OsisConnectionGeneric(object):
         result = None
         try:
             result = self._sqlalchemy_engine.execute(query)
-            getResult(result)
+            return getResult(result)
         except:
             self.resetConnection()
             result = self._sqlalchemy_engine.execute(query)
