@@ -1,4 +1,4 @@
-from osis.server.base import BaseServer
+from osis.server.base import BaseServer, TaskletBasedMixin
 
 import logging
 
@@ -6,7 +6,7 @@ logger = logging.getLogger('osis.client.local') #pylint: disable-msg=C0103
 
 
 
-class LocalTransport(BaseServer):
+class LocalTransport(TaskletBasedMixin, BaseServer):
     """
     Local transport to the Osis server
     """
@@ -28,4 +28,4 @@ class LocalTransport(BaseServer):
 
         return BaseServer.findAsView(self, type_, filter_data, view)
 
-    
+   
