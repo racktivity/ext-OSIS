@@ -28,4 +28,5 @@ class LocalTransport(TaskletBasedMixin, BaseServer):
 
         return BaseServer.findAsView(self, type_, filter_data, view)
 
-   
+
+    runQuery = BaseServer.run_query
