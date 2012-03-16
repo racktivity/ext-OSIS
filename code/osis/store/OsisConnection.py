@@ -142,7 +142,8 @@ class OsisConnectionGeneric(object):
         return self.viewObjectExists(objType, 'main', guid, version)
     
     def resetConnection(self):
-        _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
+        if not self._dsn in _SA_ENGINES:   
+            _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
         self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
 
     def viewObjectExists(self, objType, viewName, guid, version):
