@@ -236,7 +236,7 @@ class OsisConnectionGeneric(object):
             try:
                 self._sqlalchemy_metadata.reflect(
                     bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
-            except:
+            except sqlalchemy.exc.OperationalError:
                 self.resetConnection()
                 self._sqlalchemy_metadata.reflect(
                     bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
@@ -326,7 +326,7 @@ class OsisConnectionGeneric(object):
         try:
             # Step 5: Execute query and return result
             return getResult()
-        except:
+        except sqlalchemy.exc.OperationalError:
             self.resetConnection()
             return getResult()
         finally:
@@ -460,7 +460,7 @@ class OsisConnectionGeneric(object):
             result = None
             try:
                 result = self._sqlalchemy_engine.execute(query, field)
-            except:
+            except sqlalchemy.exc.OperationalError:
                 self.resetConnection()
                 result = self._sqlalchemy_engine.execute(query, field)
             finally:
