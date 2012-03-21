@@ -36,7 +36,6 @@
 
 from pylabs import q
 from pylabs.baseclasses import BaseEnumeration
-from pylabs.db.DBConnection import DBConnection
 from OsisView import OsisView
 from OsisFilterObject import OsisFilterObject
 
@@ -140,10 +139,6 @@ class OsisConnectionGeneric(object):
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
-    def resetConnection(self):
-        _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
-        self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
-
     def createObjectType(self, domain, objType):
         """
         Creates the model structure on the database
@@ -236,8 +231,10 @@ class OsisConnectionGeneric(object):
             try:
                 self._sqlalchemy_metadata.reflect(
                     bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
-            except sqlalchemy.exc.OperationalError:
-                self.resetConnection()
+            except sqlalchemy.exc.DBAPIError, e:
+                if not e.connection_invalidated:
+                    raise
+                self._sqlalchemy_engine.dispose()
                 self._sqlalchemy_metadata.reflect(
                     bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
             finally:
@@ -314,24 +311,27 @@ class OsisConnectionGeneric(object):
         result = None
         # Step 4: Set up basic select query
         query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
-
-        def getResult():
-            result = self._sqlalchemy_engine.execute(query)
+        try:
+            result = self._sqlAlchemyQuery(query)
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
                 rows = tuple(tuple(row.values()) for row in result)
                 return coldefs, rows
-
-        try:
-            # Step 5: Execute query and return result
-            return getResult()
-        except sqlalchemy.exc.OperationalError:
-            self.resetConnection()
-            return getResult()
         finally:
             if result:
                 result.close()
+
+    def _sqlAlchemyQuery(self, *args, **kwargs):
+        result = None
+        try:
+            result = self._sqlalchemy_engine.execute(*args, **kwargs)
+        except sqlalchemy.exc.DBAPIError, e:
+            if not e.connection_invalidated:
+                raise
+            self._sqlalchemy_engine.dispose()
+            result = self._sqlalchemy_engine.execute(*args, **kwargs)
+        return result
 
     def objectsFindAsView(self, domain,  objType, filterObject, viewName):
         """
@@ -459,27 +459,38 @@ class OsisConnectionGeneric(object):
 
             result = None
             try:
-                result = self._sqlalchemy_engine.execute(query, field)
-            except sqlalchemy.exc.OperationalError:
-                self.resetConnection()
-                result = self._sqlalchemy_engine.execute(query, field)
+                result = self._sqlAlchemyQuery(query, field)
             finally:
                 if result:
                     result.close()
 
     def __executeQuery(self, query, getdict= True):
-        with self._lock:
-            query = self._dbConn.sqlexecute(query)
-        if getdict and query:
-            return query.dictresult() if hasattr(query, 'dictresult') else dict()
+        '''
+        Execute query and fetch the result in dictformat if getdict is given
+        This method uses sqlalchemy to execute queries returning in PyMonkeyDB format
+        '''
+        result = None
+        try:
+            with self._lock:
+                result = self._sqlAlchemyQuery(query)
+            if getdict and result and not result.closed:
+
+                data = result.fetchall()
+                keys = result.keys()
+                dictresult = list()
+                for row in data:
+                    dictresult.append(dict((x,y) for x,y in zip(keys, row) ))
+                return dictresult
+        finally:
+            if result:
+                result.close()
+        return list()
 
 _SA_ENGINES = dict()
 
-class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
+class OsisConnectionSqlAlchemy(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd):
-        self._dbConn = DBConnection(ip, db, login, passwd)
         self._login = login
-
         self._dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
             'host': ip,
             'user': login,
@@ -490,23 +501,13 @@ class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
         if self._dsn in _SA_ENGINES:
             self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
         else:
-            self.resetConnection()
+            _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
+            self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
+
 
         self._sqlalchemy_metadata = sqlalchemy.MetaData()
 
         return dict()
 
-class OsisConnectionPG8000(OsisConnectionGeneric):
-    def connect(self, ip, db, login, passwd):
-        from PG8000Connection import PG8000Connection
-        self._dbConn = PG8000Connection(ip, db, login, passwd)
-        self._login = login
-
 def OsisConnection(usePG8000=False):
-    # If stackless uses pg8000
-    if usePG8000:
-        return OsisConnectionPG8000()
-    else:
-        return OsisConnectionPYmonkeyDBConnection()
-    # else uses PYmonkeyDBConnection one
-    #return OsisConnectionPYmonkeyDBConnection()
+    return OsisConnectionSqlAlchemy()
