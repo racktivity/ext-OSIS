@@ -43,6 +43,8 @@ from pg import ProgrammingError
 import exceptions
 import traceback
 import threading
+import itertools
+import datetime
 
 import sqlalchemy
 
@@ -464,7 +466,7 @@ class OsisConnectionGeneric(object):
                 if result:
                     result.close()
 
-    def __executeQuery(self, query, getdict= True):
+    def __executeQuery(self, query, getdict=True):
         '''
         Execute query and fetch the result in dictformat if getdict is given
         This method uses sqlalchemy to execute queries returning in PyMonkeyDB format
@@ -479,7 +481,12 @@ class OsisConnectionGeneric(object):
                 keys = result.keys()
                 dictresult = list()
                 for row in data:
-                    dictresult.append(dict((x,y) for x,y in zip(keys, row) ))
+                    column = dict()
+                    for columnname, columndata in itertools.izip(keys, row):
+                        if isinstance(columndata, datetime.datetime):
+                            columndata = str(columndata)
+                        column[columnname] = columndata
+                    dictresult.append(column)
                 return dictresult
         finally:
             if result:
