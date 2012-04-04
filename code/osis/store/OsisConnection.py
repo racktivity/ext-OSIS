@@ -496,25 +496,24 @@ class OsisConnectionGeneric(object):
 _SA_ENGINES = dict()
 
 class OsisConnectionSqlAlchemy(OsisConnectionGeneric):
-    def connect(self, ip, db, login, passwd):
+    def connect(self, ip, db, login, passwd, poolsize=10):
         self._login = login
-        self._dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
+        dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
             'host': ip,
             'user': login,
             'password': passwd,
             'db': db,
         }
 
-        if self._dsn in _SA_ENGINES:
-            self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
+        if dsn in _SA_ENGINES:
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
         else:
-            _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
-            self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
-
+            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn, pool_size=poolsize)
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
 
         self._sqlalchemy_metadata = sqlalchemy.MetaData()
 
         return dict()
 
-def OsisConnection(usePG8000=False):
+def OsisConnection():
     return OsisConnectionSqlAlchemy()

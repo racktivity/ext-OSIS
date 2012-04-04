@@ -33,19 +33,10 @@
 #
 # </License>
 
-try:
-    import threading
-except ImportError:
-    threading = None
-
 
 from pylabs import q
 from OsisConnection import OsisConnection
 
-if threading:
-    _CONNECTION_TLS = threading.local()
-else:
-    _CONNECTION_TLS = None
 
 class OsisDB(object):
     
@@ -115,24 +106,13 @@ class OsisDB(object):
             connections = ini.getSections()
         return connections
 
-    def getConnection(self, name, usePG8000=False):
+    def getConnection(self, name):
         """
         Create an Osis connection
 
         @param name : connection name
         """
-
-        if _CONNECTION_TLS:
-            if not hasattr(_CONNECTION_TLS, 'connections'):
-                _CONNECTION_TLS.connections = {}
-
-            try:
-                connection =  _CONNECTION_TLS.connections[(name, usePG8000)]
-                return connection
-            except KeyError:
-                pass
-
-        osisConn = OsisConnection(usePG8000)
+        osisConn = OsisConnection()
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
             q.logger.log("config file not found",3)
@@ -140,14 +120,14 @@ class OsisDB(object):
         else:
             ini = q.tools.inifile.open(iniFile)
 
+        poolsize = 10
         ip = ini.getValue(name,'ip')
         database = ini.getValue(name,'database')
         login = ini.getValue(name,'login')
         passwd = ini.getValue(name,'passwd')
-        osisConn.connect(ip, database, login, passwd)
+        if ini.checkParam(name, 'poolsize'):
+            poolsize = ini.getIntValue(name, 'poolsize')
+        osisConn.connect(ip, database, login, passwd, poolsize)
 
-        # Cache connection
-        if _CONNECTION_TLS:
-            _CONNECTION_TLS.connections[(name, usePG8000)] = osisConn
 
         return osisConn
