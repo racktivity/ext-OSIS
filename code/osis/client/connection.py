@@ -82,16 +82,22 @@ class _Accessor(object):
         return self._ROOTOBJECTTYPE.deserialize(self.serializer, data)
 
 
-    def query(self, Query):
+    def query(self, Query, *args, **kwargs):
         ''' run query from OSIS server
 
         @param query: Query to execute on OSIS server
         @type query: string
 
+        @param args:  Query params
+        @type: *args
+
+        @param kwargs: Query params with dict
+        @type **kwargs
+
         @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
-        return self.transport.runQuery(Query)
+        return self.transport.runQuery(Query, *args, **kwargs)
 
     def delete(self, guid):
         '''Delete a root object with a given GUID from the OSIS server

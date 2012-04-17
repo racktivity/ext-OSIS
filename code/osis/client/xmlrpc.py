@@ -87,7 +87,7 @@ class XMLRPCTransport(object):
         return base64.decodestring(self.proxy.get_version(object_type, guid,
             version, serializer))
 
-    def runQuery(self, query):
+    def runQuery(self, query, *args, **kwargs):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -97,7 +97,7 @@ class XMLRPCTransport(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
 
-        return self.proxy.runQuery(query)
+        return self.proxy.runQuery(query, *args, **kwargs)
 
     def delete(self, object_type, guid):
         '''Delete a serialized object from the server

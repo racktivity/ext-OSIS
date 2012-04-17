@@ -127,7 +127,7 @@ class OsisConnectionGeneric(object):
         """
         raise Exception("unimplemented generic connect")
 
-    def runQuery(self, query):
+    def runQuery(self, query, *args, **kwargs):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -137,7 +137,10 @@ class OsisConnectionGeneric(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
         try:
-            return self.__executeQuery(query.replace('%', '%%'))
+            if args or kwargs:
+                return self.__executeQuery(query, True, *args, **kwargs)
+            else:
+                return self.__executeQuery(query.replace('%', '%%'))
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
@@ -466,7 +469,7 @@ class OsisConnectionGeneric(object):
                 if result:
                     result.close()
 
-    def __executeQuery(self, query, getdict=True):
+    def __executeQuery(self, query, getdict=True, *args, **kwargs):
         '''
         Execute query and fetch the result in dictformat if getdict is given
         This method uses sqlalchemy to execute queries returning in PyMonkeyDB format
@@ -474,7 +477,7 @@ class OsisConnectionGeneric(object):
         result = None
         try:
             with self._lock:
-                result = self._sqlAlchemyQuery(query)
+                result = self._sqlAlchemyQuery(query, *args, **kwargs)
             if getdict and result and not result.closed:
 
                 data = result.fetchall()

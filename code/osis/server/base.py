@@ -248,7 +248,7 @@ class BaseServer(object):
 
         return result
 
-    def run_query(self, query):
+    def run_query(self, query, *args, **kwargs):
         '''Execute a query on the data store
 
         @param query: SQL query to execute
@@ -258,7 +258,7 @@ class BaseServer(object):
         @rtype: iterable of dicts
         '''
 
-        return self.execute_query(query)
+        return self.execute_query(query, *args, **kwargs)
 
 
     # Abstract methods
@@ -340,7 +340,7 @@ class BaseServer(object):
         '''
         raise NotImplementedError
 
-    def execute_query(self, query):
+    def execute_query(self, query, *args, **kwargs):
         raise NotImplementedError
 
 
@@ -473,7 +473,7 @@ class TaskletBasedMixin:
 
         return params['result']
 
-    def execute_query(self, query):
+    def execute_query(self, query, *args, **kwargs):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -485,6 +485,8 @@ class TaskletBasedMixin:
         # Set up tasklet call parameters
         params = {
             'query': query,
+            'args': args,
+            'kwargs': kwargs
         }
 
         self.tasklet_engine.execute(params=params, tags=('osis', 'query'))

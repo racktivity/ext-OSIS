@@ -113,7 +113,7 @@ class OsisServer(base.TaskletBasedMixin, base.BaseServer):
 
 
     @expose
-    def runQuery(self, query):
+    def runQuery(self, query, *args, **kwargs):
         '''Run query from OSIS server
 
         @param query: Query to execute on OSIS server
@@ -122,7 +122,7 @@ class OsisServer(base.TaskletBasedMixin, base.BaseServer):
         @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
-        return base.BaseServer.run_query(self, query)
+        return base.BaseServer.run_query(self, query, *args, **kwargs)
 
     @expose
     def delete(self, object_type, guid):

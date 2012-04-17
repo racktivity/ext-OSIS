@@ -1,5 +1,4 @@
 __author__ = 'incubaid'
-from pymodel.serializers import ThriftSerializer
 import time
 
 def main(q, i, p, params, tags):
