@@ -122,6 +122,13 @@ class OsisServer(base.TaskletBasedMixin, base.BaseServer):
         @return: result of the query else raise error
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
+        #since xmlrpc does not support tuples we need to convert lists in tuples to be able to
+        #todo an in statement in a list
+        for arg in args:
+            if isinstance(arg, dict):
+                for key, value in arg.iteritems():
+                    if isinstance(value, list):
+                        arg[key] = tuple(value)
         return base.BaseServer.run_query(self, query, *args, **kwargs)
 
     @expose
