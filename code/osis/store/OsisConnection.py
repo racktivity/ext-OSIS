@@ -85,19 +85,19 @@ class _OsisPGTypeConverter(object):
         self._pgType2pyType = {}
         self._pgType2pyType["integer"] = "int"
         self._pgType2pyType["character varying"] = "str"
-	self._pgType2pyType["text"] = "str"
+        self._pgType2pyType["text"] = "str"
         self._pgType2pyType["timestamp without time zone"] = "datetime"
         self._pgType2pyType["ARRAY"] = "hex"
-	self.requiresConvert = ['boolean', 'bool']
+        self.requiresConvert = ['boolean', 'bool']
 
     def convertType(self, pgType):
-	if not pgType in ('bool', 'str', 'datetime', 'date', 'int', 'uuid'):
-	    return self._pgType2pyType[pgType]
-	return pgType
+        if not pgType in ('bool', 'str', 'datetime', 'date', 'int', 'uuid'):
+            return self._pgType2pyType[pgType]
+        return pgType
 
     def convertValue(self, pgType, pgValue):
         pyType = self.convertType(pgType)
-	if pgValue == None: return ""
+        if pgValue == None: return ""
         if pgType in  ('boolean', 'bool'):
             if pgValue.__class__ == bool:
                 return pgValue
@@ -201,7 +201,7 @@ class OsisConnectionGeneric(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
         try:
-	    return self.__executeQuery(query)
+            return self.__executeQuery(query)
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
@@ -215,9 +215,9 @@ class OsisConnectionGeneric(object):
         """
         if(self.objectExists(objType, guid, version)):
             if not version:
-		sql = "delete from %s.main where guid='%s'"%(objType,guid)
+                sql = "delete from %s.main where guid='%s'"%(objType,guid)
             else:
-		sql = "delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version)
+                sql = "delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version)
 
 	    self.__executeQuery(sql, False)
             return True
@@ -256,18 +256,18 @@ class OsisConnectionGeneric(object):
         @param objTypeName : the name of the type to create
         """
         if self.schemeExists(objTypeName):
-	    q.logger.log("ObjectType %s already exists"%objTypeName ,3)
-	    return
+            q.logger.log("ObjectType %s already exists"%objTypeName ,3)
+            return
 
-	sqls = ['CREATE SCHEMA %s'%objTypeName, \
-		'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName, \
+        sqls = ['CREATE SCHEMA %s'%objTypeName, \
+                'CREATE TABLE %s.main ( guid uuid NOT NULL, "version" uuid, creationdate timestamp without time zone, data text, CONSTRAINT pk_guid PRIMARY KEY (guid)) WITH (OIDS=FALSE);'%objTypeName, \
 #		'CREATE TABLE %(scheme)s.main_archive () INHERITS (%(scheme)s.main) WITH (OIDS=FALSE);'%{'scheme':objTypeName},\
 #		'CREATE OR REPLACE RULE %(scheme)s_delete AS ON DELETE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},\
 #		'CREATE OR REPLACE RULE %(scheme)s_update AS ON UPDATE TO %(scheme)s.main DO  INSERT INTO %(scheme)s.main_archive (guid, version, creationdate, data) VALUES (old.guid, old.version, old.creationdate, old.data)'%{'scheme':objTypeName},
-		'CREATE INDEX guid_%(schema)s_main ON %(schema)s.main (guid)'%{'schema':objTypeName}, 'CREATE INDEX version_%(schema)s_main ON %(schema)s.main (version)'%{'schema':objTypeName}]
+                'CREATE INDEX guid_%(schema)s_main ON %(schema)s.main (guid)'%{'schema':objTypeName}, 'CREATE INDEX version_%(schema)s_main ON %(schema)s.main (version)'%{'schema':objTypeName}]
 
-	for sql in sqls:
-	    self.__executeQuery(sql, False)
+        for sql in sqls:
+            self.__executeQuery(sql, False)
 
     def schemeExists(self, name):
         """
@@ -308,7 +308,7 @@ class OsisConnectionGeneric(object):
         obj = obj.encode('hex')
         query = "insert into %s.main (guid, version, creationdate, data) VALUES ('%s', '%s', '%s', '{%s}')"%(data.__class__.__name__, data.guid, data.version, data.creationdate, obj)
         try:
-	    self.__executeQuery(query, False)
+            self.__executeQuery(query, False)
         except ProgrammingError, ex:
             raise OsisException(query, ex)
         return data
@@ -323,7 +323,7 @@ class OsisConnectionGeneric(object):
         obj = obj.encode('hex')
         query = "update only %s.main set guid = '%s', version = '%s', data = '{%s}' where guid = '%s'"%(data.__class__.__name__, data.guid, data.version, obj, data.guid)
         try:
-	    self.__executeQuery(query, False)
+            self.__executeQuery(query, False)
         except ProgrammingError, ex:
             raise OsisException(query, ex)
         return data
@@ -331,7 +331,7 @@ class OsisConnectionGeneric(object):
 
     def _find_table(self, schema, name):
         try:
-	    full_name = '%s.%s' % (schema, name)
+            full_name = '%s.%s' % (schema, name)
             return self._sqlalchemy_metadata.tables[full_name]
         except KeyError:
             pass
@@ -473,8 +473,8 @@ class OsisConnectionGeneric(object):
 
         @param view : Osisview object to create on the database
         """
-	for sql in view.buildSql():
-	    self.__executeQuery(sql, False)
+        for sql in view.buildSql():
+            self.__executeQuery(sql, False)
 
 
     def viewDestroy(self, objType, viewName):
@@ -487,8 +487,8 @@ class OsisConnectionGeneric(object):
             q.eventhandler.raiseCriticalError('%s.%s not found.'%(objType, viewName))
             return
 
-	sql = 'DROP TABLE %s.%s CASCADE'%(objType, viewName)
-	self.__executeQuery(sql, False)
+        sql = 'DROP TABLE %s.%s CASCADE'%(objType, viewName)
+        self.__executeQuery(sql, False)
         return True
 
     def viewDelete(self, objType, viewName, guid, versionguid=None):
@@ -504,11 +504,11 @@ class OsisConnectionGeneric(object):
         """
 
         if not versionguid:
-	    sql = "delete from %s.%s where guid='%s'"%(objType, viewName, guid)
+            sql = "delete from %s.%s where guid='%s'"%(objType, viewName, guid)
         else:
-	    sql = "delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, guid, versionguid)
+            sql = "delete from %s.%s where guid='%s' and version = '%s'"%(objType, viewName, guid, versionguid)
 
-	self.__executeQuery(sql, False)
+        self.__executeQuery(sql, False)
         return True
 
 
@@ -575,13 +575,13 @@ class OsisConnectionGeneric(object):
         elif fieldtype in  ('uuid', 'bool',):
             ret = "%s.%s.%s = '%s'"%(objType,view,field,value)
         elif fieldtype in ('character varying', 'text', 'datetime'):
-	    field = '%s.%s.%s'%(objType,view,field)
-	    if fieldtype in ('datetime'):
-		field = 'cast(%s as varchar)'%field
-	    if exactMatch:
-		ret = "%s = '%s'"%(field, self._escape(value))
-	    else:
-		ret = "%s like '%%%s%%'"%(field, self._escape(value))
+            field = '%s.%s.%s'%(objType,view,field)
+            if fieldtype in ('datetime'):
+                field = 'cast(%s as varchar)'%field
+            if exactMatch:
+                ret = "%s = '%s'"%(field, self._escape(value))
+            else:
+                ret = "%s like '%%%s%%'"%(field, self._escape(value))
         else:
             if q.basetype.integer.check(value) or q.basetype.float.check(value):
                 ret = "%s.%s.%s = %s"%(objType,view,field,value)
@@ -592,12 +592,12 @@ class OsisConnectionGeneric(object):
         if not results:
             return list()
 
-	columns = self._getColumns(objType, view)
+        columns = self._getColumns(objType, view)
         dataFound = self._getViewData(objType, view, results)
 
-	for data in dataFound:
-	    for columnName in [col for col in data if columns[col] in osisPGTypeConverter.requiresConvert]:
-		data[columnName] = osisPGTypeConverter.convertValue(columns[columnName], data[columnName])
+        for data in dataFound:
+            for columnName in [col for col in data if columns[col] in osisPGTypeConverter.requiresConvert]:
+                data[columnName] = osisPGTypeConverter.convertValue(columns[columnName], data[columnName])
 
         return dataFound
 
@@ -649,22 +649,22 @@ class OsisConnectionGeneric(object):
         return rawdata
 
     def _getFiltersResults(self, objType, filterQueries):
-	conditions = list()
-	sql = ""
-	for index, view in enumerate(filterQueries):
-	    conditions.extend(filterQueries[view])
-	    if index == 0:
-		firstview = view
-		sql = "select %(obj)s.%(firstview)s.guid from %(obj)s.%(firstview)s"%{'obj':objType, 'firstview':firstview}
-		continue
-	    sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':objType, 'view':view, 'firstview': firstview}
+        conditions = list()
+        sql = ""
+        for index, view in enumerate(filterQueries):
+            conditions.extend(filterQueries[view])
+            if index == 0:
+                firstview = view
+                sql = "select %(obj)s.%(firstview)s.guid from %(obj)s.%(firstview)s"%{'obj':objType, 'firstview':firstview}
+                continue
+            sql += " inner join %(obj)s.%(view)s on %(obj)s.%(view)s.guid = %(obj)s.%(firstview)s.guid"%{'obj':objType, 'view':view, 'firstview': firstview}
 
-	if not sql: return list()
-	sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \
-																			   'firstview':firstview}
-	sql += " where %s"%(" and ".join(conditions))
-	result = self.__executeQuery(sql)
-	return [row['guid'] for row in result]
+        if not sql: return list()
+        sql += " inner join only %(obj)s.main on %(obj)s.main.guid = %(obj)s.%(firstview)s.guid and %(obj)s.main.version = %(obj)s.%(firstview)s.version"%{'obj':objType, \
+                'firstview':firstview}
+        sql += " where %s"%(" and ".join(conditions))
+        result = self.__executeQuery(sql)
+        return [row['guid'] for row in result]
 
     def _escape(self, pgstr):
         pgstr = pgstr.replace("'", "\\'")
@@ -672,9 +672,9 @@ class OsisConnectionGeneric(object):
 
 
     def __executeQuery(self, query, getdict= True):
-	query = self._dbConn.sqlexecute(query)
-	if getdict and query:
-	    return query.dictresult() if hasattr(query, 'dictresult') else dict()
+        query = self._dbConn.sqlexecute(query)
+        if getdict and query:
+            return query.dictresult() if hasattr(query, 'dictresult') else dict()
 
 _SA_ENGINES = dict()
 
