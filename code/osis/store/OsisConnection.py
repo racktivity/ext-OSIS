@@ -34,14 +34,11 @@
 # </License>
 
 
-import re
 import datetime, time
 
 from pymonkey import q
-from pymonkey.baseclasses.ManagementApplication import ManagementApplication
 from pymonkey.baseclasses import BaseEnumeration
-from pymonkey.db.DBConnection import DBConnection
-from OsisView import OsisView, OsisColumn, OsisType
+from OsisView import OsisView
 from OsisFilterObject import OsisFilterObject
 
 import sqlalchemy
@@ -52,7 +49,7 @@ from osis.model.serializers import ThriftSerializer
 from pg import ProgrammingError
 import exceptions
 import traceback
-import uuid
+import itertools
 
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
@@ -96,7 +93,6 @@ class _OsisPGTypeConverter(object):
         return pgType
 
     def convertValue(self, pgType, pgValue):
-        pyType = self.convertType(pgType)
         if pgValue == None: return ""
         if pgType in  ('boolean', 'bool'):
             if pgValue.__class__ == bool:
@@ -112,7 +108,6 @@ osisPGTypeConverter = _OsisPGTypeConverter()
 
 class OsisConnectionGeneric(object):
     def __init__(self):
-        self._dbConn = None
         self._login = None
 
         self._sqlalchemy_engine = None
@@ -141,11 +136,6 @@ class OsisConnectionGeneric(object):
 
         return self.viewObjectExists(objType, 'main', guid, version)
     
-    def resetConnection(self):
-        if not self._dsn in _SA_ENGINES:   
-            _SA_ENGINES[self._dsn] = sqlalchemy.create_engine(self._dsn)
-        self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
-
     def viewObjectExists(self, objType, viewName, guid, version):
         """
         Checks if an instance of objType with the supplied guid exists
@@ -156,11 +146,11 @@ class OsisConnectionGeneric(object):
         @param version : unique version for the given guid
         """
         if not version:
-	    sql = "select * from only %s.%s where guid='%s'"%(objType, viewName, guid)
+            sql = "select * from only %s.%s where guid='%s'"%(objType, viewName, guid)
         else:
-	    sql ="select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version)
+            sql ="select * from %s.%s where guid='%s' and version='%s'"%(objType, viewName, guid, version)
 
-	result = self.__executeQuery(sql)
+        result = self.__executeQuery(sql)
         if result:
             return result[0] > 0
         return False
@@ -177,13 +167,13 @@ class OsisConnectionGeneric(object):
                          If ommited, only the active version is retrieved !
         """
         if not version:
-	    sql = "select * from only %s.main where guid='%s'"%(objType,guid)
+            sql = "select * from only %s.main where guid='%s'"%(objType,guid)
             errorStr = '%s with guid %s not found.'%(objType, guid)
         else:
-	    sql = "select * from %s.main where guid='%s' and version = '%s'"%(objType,guid, version)
+            sql = "select * from %s.main where guid='%s' and version = '%s'"%(objType,guid, version)
             errorStr = '%s with guid %s and version %s not found.'%(objType, guid, version)
 
-	result = self.__executeQuery(sql)
+        result = self.__executeQuery(sql)
         if not result:
             q.eventhandler.raiseCriticalError(errorStr)
         else:
@@ -219,7 +209,7 @@ class OsisConnectionGeneric(object):
             else:
                 sql = "delete from %s.main where guid='%s' and version='%s'"%(objType,guid,version)
 
-	    self.__executeQuery(sql, False)
+            self.__executeQuery(sql, False)
             return True
         else:
             if not version:
@@ -340,7 +330,7 @@ class OsisConnectionGeneric(object):
             self._sqlalchemy_metadata.reflect(
                 bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
         except:
-            self.resetConnection()
+            self._sqlalchemy_engine.dispose()
             self._sqlalchemy_metadata.reflect(
                 bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
 
@@ -416,25 +406,31 @@ class OsisConnectionGeneric(object):
         # Step 4: Set up basic select query
         query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
 
-        def getResult(result):
+        # Step 5: Execute query and return result
+        result = None
+        try:
+            result = self._sqlAlchemyQuery(query)
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
                 rows = tuple(tuple(row.values()) for row in result)
                 return coldefs, rows
-
-        # Step 5: Execute query and return result
-        result = None
-        try:
-            result = self._sqlalchemy_engine.execute(query)
-            return getResult(result)
-        except:
-            self.resetConnection()
-            result = self._sqlalchemy_engine.execute(query)
-            return getResult(result)
         finally:
             if result:
                 result.close()
+
+    def _sqlAlchemyQuery(self, *args, **kwargs):
+        result = None
+        try:
+            result = self._sqlalchemy_engine.execute(*args, **kwargs)
+        except sqlalchemy.exc.DBAPIError, e:
+            if not e.connection_invalidated:
+                raise
+            self._sqlalchemy_engine.dispose()
+            result = self._sqlalchemy_engine.execute(*args, **kwargs)
+        return result
+
+
 
     def objectsFindAsView(self, objType, filterObject, viewName):
         """
@@ -551,10 +547,7 @@ class OsisConnectionGeneric(object):
             
             result = None
             try:
-                result = self._sqlalchemy_engine.execute(query, field)
-            except:
-                self.resetConnection()
-                result = self._sqlalchemy_engine.execute(query, field)
+                result = self._sqlAlchemyQuery(query, field)
             finally:
                 if result:
                     result.close()
@@ -645,7 +638,7 @@ class OsisConnectionGeneric(object):
                 'viewversion':viewversion,
                 'guids':guids}
 
-	rawdata = self.__executeQuery(sql)
+        rawdata = self.__executeQuery(sql)
         return rawdata
 
     def _getFiltersResults(self, objType, filterQueries):
@@ -670,46 +663,58 @@ class OsisConnectionGeneric(object):
         pgstr = pgstr.replace("'", "\\'")
         return pgstr
 
+    def __executeQuery(self, query, getdict=True, *args, **kwargs):
+        '''
+        Execute query and fetch the result in dictformat if getdict is given
+        This method uses sqlalchemy to execute queries returning in PyMonkeyDB format
+        '''
+        result = None
+        try:
+            result = self._sqlAlchemyQuery(query, *args, **kwargs)
+            if getdict and result and not result.closed:
 
-    def __executeQuery(self, query, getdict= True):
-        query = self._dbConn.sqlexecute(query)
-        if getdict and query:
-            return query.dictresult() if hasattr(query, 'dictresult') else dict()
+                data = result.fetchall()
+                keys = result.keys()
+                dictresult = list()
+                for row in data:
+                    column = dict()
+                    for columnname, columndata in itertools.izip(keys, row):
+                        if isinstance(columndata, datetime.datetime):
+                            columndata = str(columndata)
+                        elif isinstance(columndata, bool):
+                            if columndata is not None:
+                                columndata = 't' if columndata else 'f'
+                        column[columnname] = columndata
+                    dictresult.append(column)
+                return dictresult
+        finally:
+            if result:
+                result.close()
+        return list()
+
 
 _SA_ENGINES = dict()
 
-class OsisConnectionPYmonkeyDBConnection(OsisConnectionGeneric):
-    def connect(self, ip, db, login, passwd):
-        self._dbConn = DBConnection(ip, db, login, passwd)
+class OsisConnectionSqlAlchemy(OsisConnectionGeneric):
+    def connect(self, ip, db, login, passwd, poolsize=20):
         self._login = login
 
-        self._dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
+        dsn = 'postgresql://%(user)s:%(password)s@%(host)s/%(db)s' % {
             'host': ip,
             'user': login,
             'password': passwd,
             'db': db,
         }
 
-        if self._dsn in _SA_ENGINES:
-            self._sqlalchemy_engine = _SA_ENGINES[self._dsn]
+        if dsn in _SA_ENGINES:
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
         else:
-            self.resetConnection()
+            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn, pool_size=poolsize)
+            self._sqlalchemy_engine = _SA_ENGINES[dsn]
 
         self._sqlalchemy_metadata = sqlalchemy.MetaData()
 
 	return dict()
 
-class OsisConnectionPG8000(OsisConnectionGeneric):
-    def connect(self, ip, db, login, passwd):
-        from PG8000Connection import PG8000Connection
-        self._dbConn = PG8000Connection(ip, db, login, passwd)
-        self._login = login
-def OsisConnection(usePG8000=False):
-    # If stackless uses pg8000
-    if usePG8000:
-        raise NotImplementedError
-        return OsisConnectionPG8000()
-    else:
-        return OsisConnectionPYmonkeyDBConnection()
-    # else uses PYmonkeyDBConnection one
-    #return OsisConnectionPYmonkeyDBConnection()
+def OsisConnection():
+    return OsisConnectionSqlAlchemy()
