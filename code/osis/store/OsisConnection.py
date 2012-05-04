@@ -191,7 +191,7 @@ class OsisConnectionGeneric(object):
         @type: List of rows. Each row shall be represented as a dictionary.
         '''
         try:
-            return self.__executeQuery(query)
+            return self.__executeQuery(query.replace('%', '%%'))
         except ProgrammingError,ex:
             raise OsisException(query, ex)
 
