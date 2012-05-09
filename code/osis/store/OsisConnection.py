@@ -614,8 +614,38 @@ class OsisConnectionGeneric(object):
 
 
     def _getColumns(self, objType, view):
-	columns = self._dbConn.listColumns(view, objType)
+        columns = dict()
+        sql = """
+        SELECT pg_attribute.attname, pg_type.typname FROM pg_class
+            JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
+            JOIN pg_attribute ON pg_attribute.attrelid = pg_class.oid
+            JOIN pg_type ON pg_type.oid = pg_attribute.atttypid
+        WHERE pg_namespace.nspname = '%(object)s' AND pg_class.relname = '%(view)s'
+            AND (pg_attribute.attnum > 0 or pg_attribute.attname = 'oid')
+            AND pg_attribute.attisdropped = 'f'
+        """%{'object' : objType,
+             'view'   : view}
+        for column in  self.__executeQuery(sql):
+            if column['typname'].startswith('bool'):
+                columns[column['attname']] = 'bool'
+            elif column['typname'].startswith('abstime') or column['typname'].startswith('date') or column['typname'].startswith('interval'):
+                columns[column['attname']] = 'date'
+            elif column['typname'].startswith('timestamp'):
+                columns[column['attname']] = 'datetime'
+            elif column['typname'].startswith('money'):
+                columns[column['attname']] = 'money'
+            elif column['typname'].startswith('numeric'):
+                columns[column['attname']] = 'num'
+            elif column['typname'].startswith('float'):
+                columns[column['attname']] = 'float'
+            elif column['typname'].startswith('int') or column['typname'].startswith('oid'):
+                columns[column['attname']] = 'int'
+            elif column['typname'].startswith('uuid'):
+                columns[column['attname']] = 'uuid'
+            else:
+                columns[column['attname']] = 'text'
         return columns
+
 
     def _getViewData(self, objType, view, results):
         viewname = "%s.%s"%(objType, view)
