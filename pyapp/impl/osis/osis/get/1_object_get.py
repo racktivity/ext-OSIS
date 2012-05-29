@@ -7,8 +7,7 @@ def main(q, i, p, params, tags):
     type_name = params['rootobjecttype']
     # FIXME: use category
     key  = 'osis.%s.%s.%s'  % (domain_name, type_name, params['rootobjectguid'])
-    arakoonClient = q.clients.arakoon.getClient(p.api.appname)
-    root = arakoonClient.get(key)
+    root = p.api.db.get(key)
     # Temporary hack
     # TODO FIXME
     category = getattr(p.api, category_name)
