@@ -36,6 +36,9 @@
 from pylabs import q
 from pylabs.baseclasses.BaseEnumeration import EnumerationWithValue
 
+#added by racktivity
+import OsisConnection
+
 class OsisView(object):
     def __init__(self, domain, objType, name):
         self.domain = domain
@@ -44,8 +47,9 @@ class OsisView(object):
         self.columns = {}
         self.setCol('viewguid', q.enumerators.OsisType.UUID, False)
         self.setCol('guid', q.enumerators.OsisType.UUID, False)
-        self.schema = '%s_%s' % (self.domain, self.objType)
-        
+        #overwritten by racktivity
+        #self.schema = '%s_%s' % (self.domain, self.objType)
+        self.schema = OsisConnection.getSchemeName(self.domain, self.objType)
 
     def setCol(self, name, datatype, nullable):
         if not self.columns.has_key(name):

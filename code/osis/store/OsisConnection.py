@@ -48,9 +48,19 @@ import datetime
 
 import sqlalchemy
 
-def get_table_name(domain, objType):
-    return "%s_view_%s_list" % (domain, objType)
+def getTableName(domain, objType):
+    #overwritten by racktivity
+    #return "%s_view_%s_list" % (domain, objType)
+    return objType
 
+def getSchemeName(domain, objType):
+    #overwritten by racktivity
+    #return '%s_%s' % (domain, objType)
+    return domain    
+    
+def getTable(domain, objType):
+    return '%s.%s' % (getSchemeName(domain, objType), getTableName(domain, objType))
+    
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
 
@@ -175,7 +185,7 @@ class OsisConnectionGeneric(object):
             q.logger.log("Schema %s already exists in domain %s" % (name, domain) ,3)
             return
 
-        schema = self._getSchemeName(domain, name)
+        schema = getSchemeName(domain, name)
 
         sqls = ['CREATE SCHEMA %s' % schema]
 
@@ -189,7 +199,7 @@ class OsisConnectionGeneric(object):
         @param domain : domain to check for the schema
         @param name : name of the schema to check
         """
-        schema = self._getSchemeName(domain, name)
+        schema = getSchemeName(domain, name)
 
         sql =  "select distinct schemaname as name from pg_tables where schemaname = '%s'" % schema
         result = self.__executeQuery(sql)
@@ -198,9 +208,6 @@ class OsisConnectionGeneric(object):
             return True
         else:
             return False
-
-    def _getSchemeName(self, domain, name):
-        return '%s_%s' % (domain, name)
 
     def viewExists(self, domain, objType, viewname):
         """
@@ -214,7 +221,7 @@ class OsisConnectionGeneric(object):
         if not self.schemeExists(domain, objType):
             return False
 
-        schema = self._getSchemeName(domain, objType)
+        schema = getSchemeName(domain, objType)
 
         sql =  "select distinct schemaname, tablename from pg_tables where schemaname = '%s' and tablename = '%s'"%(schema, viewname)
         result = self.__executeQuery(sql)
@@ -256,11 +263,11 @@ class OsisConnectionGeneric(object):
         @param filterobject : a list of filters indicating the view and field-value to use to filter
         @param viewToReturn : the view to use to return the list of found objects
         """
-        schema = self._getSchemeName(domain, objType)
+        schema = getSchemeName(domain, objType)
         if viewToReturn:
             table_name = viewToReturn
         else:
-            table_name = get_table_name(domain, objType)
+            table_name = getTableName(domain, objType)
 
         # Step 1: turn the filters into a more sane datastructure
         filters = set()
@@ -394,7 +401,7 @@ class OsisConnectionGeneric(object):
         @param objType : the type of object to destroy
         @param viewName : Osisview object to destroy
         """
-        schema = self._getSchemeName(domain, objType)
+        schema = getSchemeName(domain, objType)
 
         if not self.viewExists(domain, objType, viewName):
             q.eventhandler.raiseCriticalError('%s.%s not found.'%(schema, viewName))
@@ -417,7 +424,7 @@ class OsisConnectionGeneric(object):
                              If ommited, all versions will be removed !
         """
 
-        schema = self._getSchemeName(domain, objType)
+        schema = getSchemeName(domain, objType)
 
         sql = "delete from %s.%s where guid='%s'" % (schema, viewName, guid)
 
@@ -444,7 +451,7 @@ class OsisConnectionGeneric(object):
         if not isinstance(fields, list):
             fields = [fields,]
 
-        schema = self._getSchemeName(domain, objType)
+        schema = getSchemeName(domain, objType)
 
         # Add new entry
         table = self._find_table(schema, viewName)
