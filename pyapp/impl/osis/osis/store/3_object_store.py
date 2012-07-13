@@ -1,9 +1,7 @@
-__author__ = 'incubaid'
-from pymodel.serializers import ThriftSerializer
+import time
 
 def main(q, i, p, params, tags):
+    osis = p.application.getOsisConnection(p.api.appname)
     root = params['rootobject']
     domain = params['domain']
-    key  = 'osis.%s.%s.%s'  % (domain, root.PYMODEL_MODEL_INFO.name, root.guid)
-    data = ThriftSerializer.serialize(root)
-    p.api.db.set(key, data)
+    osis.objectSave(domain, root)

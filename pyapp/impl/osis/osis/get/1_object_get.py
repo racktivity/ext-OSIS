@@ -1,20 +1,19 @@
-
 from pymodel.serializers import ThriftSerializer
 
 def main(q, i, p, params, tags):
-    category_name = params['category']
-    domain_name = params['domain']
-    type_name = params['rootobjecttype']
-    # FIXME: use category
-    key  = 'osis.%s.%s.%s'  % (domain_name, type_name, params['rootobjectguid'])
-    root = p.api.db.get(key)
-    # Temporary hack
-    # TODO FIXME
-    category = getattr(p.api, category_name)
-    domain = getattr(category, domain_name)
-    client = getattr(domain, type_name)
-    type_class = client._ROOTOBJECTTYPE
+    categoryName = params['category']
+    domainName = params['domain']
+    typeName = params['rootobjecttype']
 
-    rootobject =  ThriftSerializer.deserialize(type_class, root)
+    osis = p.application.getOsisConnection(p.api.appname)
+    root = osis.objectGet(domainName, typeName, params['rootobjectguid'])
+
+    category = getattr(p.api, categoryName)
+    domain = getattr(category, domainName)
+    client = getattr(domain, typeName)
+
+    typeClass = client._ROOTOBJECTTYPE
+
+    rootobject =  ThriftSerializer.deserialize(typeClass, root)
     params['rootobject'] = rootobject
     return rootobject

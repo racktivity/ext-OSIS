@@ -39,7 +39,7 @@ from OsisConnection import OsisConnection
 
 
 class OsisDB(object):
-    
+
     """
     Borg singleton OsisDB object
     """
@@ -48,6 +48,8 @@ class OsisDB(object):
     def __init__(self):
         #implement the borg pattern (we are one)
         self.__dict__ = self._we_are_one
+        if not hasattr(self, "_connections"):
+            self._connections = {}
         #pass
 
 
@@ -112,6 +114,11 @@ class OsisDB(object):
 
         @param name : connection name
         """
+
+        # check if we already cached the connection or not
+        if name in self._connections:
+            return self._connections[name]
+
         osisConn = OsisConnection()
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
@@ -129,5 +136,7 @@ class OsisDB(object):
             poolsize = ini.getIntValue(name, 'poolsize')
         osisConn.connect(ip, database, login, passwd, poolsize)
 
+        # cache the connection for later on
+        self._connections[name] = osisConn
 
         return osisConn

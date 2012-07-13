@@ -39,13 +39,13 @@ from pylabs.baseclasses import BaseEnumeration
 from OsisView import OsisView
 from OsisFilterObject import OsisFilterObject
 
+from pymodel.serializers import ThriftSerializer
 from pg import ProgrammingError
 import exceptions
 import traceback
 import threading
 import itertools
 import datetime
-
 import sqlalchemy
 
 def getTableName(domain, objType):
@@ -56,11 +56,11 @@ def getTableName(domain, objType):
 def getSchemeName(domain, objType):
     #overwritten by racktivity
     #return '%s_%s' % (domain, objType)
-    return domain    
-    
+    return domain
+
 def getTable(domain, objType):
     return '%s.%s' % (getSchemeName(domain, objType), getTableName(domain, objType))
-    
+
 class QueryValue(BaseEnumeration):
     """Utility class which gives string representation of Log Type """
 
@@ -126,7 +126,7 @@ class OsisConnectionGeneric(object):
         self._sqlalchemy_engine = None
         self._sqlalchemy_metadata = None
 
-    def connect(self, ip, db, login, passwd):
+    def connect(self, ip, db, login, passwd, poolsize):
         """
         Connect to the postgresql server
 
@@ -169,10 +169,23 @@ class OsisConnectionGeneric(object):
         @param domain : domain to create the object in
         @param objTypeName : name of the object type to create
         '''
-        if self.schemeExists(domain, objTypeName):
-            q.logger.log("ObjectType %s already exists"%objTypeName ,3)
-            return
-        self.schemeCreate(domain, objTypeName)
+        if not self.schemeExists(domain, objTypeName):
+            self.schemeCreate(domain, objTypeName)
+
+        #create rootobject table to store our binary blob
+        schema = getSchemeName(domain, objTypeName)
+        tableName = objTypeName + "_obj"
+
+        if self.findTable(schema, tableName) is None:
+            table = sqlalchemy.Table(tableName, self._sqlalchemy_metadata,
+                sqlalchemy.Column("guid", sqlalchemy.String(46), primary_key=True, nullable=False),
+                sqlalchemy.Column("creationdate", sqlalchemy.DateTime()),
+                sqlalchemy.Column("data", sqlalchemy.LargeBinary),
+                schema=schema
+            )
+
+            if not table.exists(self._sqlalchemy_engine):
+                table.create(self._sqlalchemy_engine)
 
     def schemeCreate(self, domain, name):
         """
@@ -230,7 +243,7 @@ class OsisConnectionGeneric(object):
         else:
             return False
 
-    def _find_table(self, schema, name):
+    def findTable(self, schema, name):
         full_name = '%s.%s' % (schema, name)
 
         if full_name in self._sqlalchemy_metadata.tables:
@@ -249,6 +262,8 @@ class OsisConnectionGeneric(object):
                 self._sqlalchemy_engine.dispose()
                 self._sqlalchemy_metadata.reflect(
                     bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+            except sqlalchemy.exc.InvalidRequestError:
+                return None
             finally:
                 self._lock_metadata.release()
 
@@ -281,7 +296,7 @@ class OsisConnectionGeneric(object):
         filters = tuple(filters)
 
         # Step 2: Create list of values to retrieve
-        table = self._find_table(schema, table_name)
+        table = self.findTable(schema, table_name)
         fields = []
         for c in table.c:
             # Convert datetime fields to str for backwards compatibility
@@ -299,12 +314,12 @@ class OsisConnectionGeneric(object):
         # Step 3: Set up joins
         from_obj = reduce(
             lambda f, t: f.join(t, t.c.guid == table.c.guid),
-            set(self._find_table(schema, filter_[0]) for filter_ in filters if filter_[0] != table_name),
+            set(self.findTable(schema, filter_[0]) for filter_ in filters if filter_[0] != table_name),
             table)
 
         # Step 4: Create 'where' clause
         def create_clause((view, field,value, exact, )):
-            table = self._find_table(schema, view)
+            table = self.findTable(schema, view)
             col = table.c[field]
 
             if isinstance(col.type,
@@ -324,7 +339,7 @@ class OsisConnectionGeneric(object):
         # Step 4: Set up basic select query
         query = sqlalchemy.sql.select(fields, where_clause, from_obj=from_obj)
         try:
-            result = self._sqlAlchemyQuery(query)
+            result = self.runSqlAlchemyQuery(query)
             if not viewToReturn:
                 return tuple(row['guid'] for row in result)
             else:
@@ -334,7 +349,7 @@ class OsisConnectionGeneric(object):
             if result:
                 result.close()
 
-    def _sqlAlchemyQuery(self, *args, **kwargs):
+    def runSqlAlchemyQuery(self, *args, **kwargs):
         result = None
         try:
             result = self._sqlalchemy_engine.execute(*args, **kwargs)
@@ -454,7 +469,7 @@ class OsisConnectionGeneric(object):
         schema = getSchemeName(domain, objType)
 
         # Add new entry
-        table = self._find_table(schema, viewName)
+        table = self.findTable(schema, viewName)
 
         for field in fields:
             # Add missing field data
@@ -471,7 +486,7 @@ class OsisConnectionGeneric(object):
 
             result = None
             try:
-                result = self._sqlAlchemyQuery(query, field)
+                result = self.runSqlAlchemyQuery(query, field)
             finally:
                 if result:
                     result.close()
@@ -484,7 +499,7 @@ class OsisConnectionGeneric(object):
         result = None
         try:
             with self._lock:
-                result = self._sqlAlchemyQuery(query, *args, **kwargs)
+                result = self.runSqlAlchemyQuery(query, *args, **kwargs)
             if getdict and result and not result.closed:
 
                 data = result.fetchall()
@@ -503,7 +518,129 @@ class OsisConnectionGeneric(object):
                 result.close()
         return list()
 
-_SA_ENGINES = dict()
+    def _createObject(self, domain, data):
+        """
+        Store the supplied data in the database
+        @param data : object to store
+        """
+
+        tableName = data.__class__.__name__ + "_obj"
+        schema = getSchemeName(domain, tableName)
+        table = self.findTable(schema, tableName)
+
+        obj = ThriftSerializer.serialize(data)
+        creationdate = float(data.creationdate)
+        creationdate = datetime.datetime.fromtimestamp(creationdate)
+
+        insert = table.insert().values(guid=data.guid, creationdate=creationdate, data=obj)
+
+        try:
+            self.runSqlAlchemyQuery(insert).close()
+        except ProgrammingError, ex:
+            raise OsisException(str(insert), ex)
+        return data
+
+    def _updateObject(self, domain, data):
+        """
+        Update the supplied data in the database
+
+        @param data : object to update
+        """
+
+        tableName = data.__class__.__name__ + "_obj"
+        schema = getSchemeName(domain, tableName)
+        table = self.findTable(schema, tableName)
+
+        obj = ThriftSerializer.serialize(data)
+
+        update = table.update().where(table.c.guid == data.guid).values(data=obj)
+
+        try:
+            self.runSqlAlchemyQuery(update).close()
+        except ProgrammingError, ex:
+            raise OsisException(str(update), ex)
+        return data
+
+    def objectSave(self, domain, data):
+        """
+        Update or create the supplied object
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        """
+        if not self.objectExists(domain, data.__class__.__name__, data.guid):
+            return self._createObject(domain, data)
+        else:
+            return self._updateObject(domain, data)
+
+    def objectGet(self, domain, objType, guid):
+        """
+        Get an instance of objType with the supplied guid
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        """
+
+        tableName = objType + "_obj"
+        schema = getSchemeName(domain, tableName)
+        table = self.findTable(schema, tableName)
+
+        select = sqlalchemy.sql.select([ table.c.data ], table.c.guid == guid)
+        errorStr = '%s.%s with guid %s not found.' % (schema, objType, guid)
+
+        result = self.runSqlAlchemyQuery(select)
+        if not result:
+            q.eventhandler.raiseCriticalError(errorStr)
+        else:
+            retval = result.fetchone()
+            if not retval:
+                q.eventhandler.raiseCriticalError(errorStr)
+            else:
+                result.close()
+                return retval[0]
+
+    def objectDelete(self, domain, objType, guid):
+        """
+        Delete an instance of objType with the supplied guid
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        """
+
+        if self.objectExists(domain, objType, guid):
+            tableName = objType + "_obj"
+            schema = getSchemeName(domain, tableName)
+            table = self.findTable(schema, tableName)
+
+            delete = table.delete().where(table.c.guid == guid)
+
+            self.runSqlAlchemyQuery(delete).close()
+            return True
+        else:
+            q.eventhandler.raiseCriticalError('%s.%s with guid %s not found.' % (domain, objType, guid))
+
+    def objectExists(self, domain, objType, guid):
+        """
+        Checks if an instance of objType with the supplied guid exists
+
+        @param objType : type of object to check
+        @param guid : unique identifier
+        """
+
+        tableName = objType + "_obj"
+        schema = getSchemeName(domain, tableName)
+        table = self.findTable(schema, tableName)
+
+        select = sqlalchemy.sql.select([ table.c.guid ], table.c.guid == guid)
+
+        result = self.runSqlAlchemyQuery(select)
+        if result:
+            retval = result.fetchone()
+            if retval:
+                return True
+        return False
+
+_SA_CACHE = dict()
 
 class OsisConnectionSqlAlchemy(OsisConnectionGeneric):
     def connect(self, ip, db, login, passwd, poolsize=10):
@@ -515,13 +652,15 @@ class OsisConnectionSqlAlchemy(OsisConnectionGeneric):
             'db': db,
         }
 
-        if dsn in _SA_ENGINES:
-            self._sqlalchemy_engine = _SA_ENGINES[dsn]
-        else:
-            _SA_ENGINES[dsn] = sqlalchemy.create_engine(dsn, pool_size=poolsize)
-            self._sqlalchemy_engine = _SA_ENGINES[dsn]
+        if dsn not in _SA_CACHE:
+            _SA_CACHE[dsn] = {
+                "engine": sqlalchemy.create_engine(dsn, pool_size=poolsize),
+                "metadata": sqlalchemy.MetaData()
+            }
 
-        self._sqlalchemy_metadata = sqlalchemy.MetaData()
+        alchemyInfo = _SA_CACHE[dsn]
+        self._sqlalchemy_engine = alchemyInfo["engine"]
+        self._sqlalchemy_metadata = alchemyInfo["metadata"]
 
         return dict()
 
