@@ -529,8 +529,11 @@ class OsisConnectionGeneric(object):
         table = self.findTable(schema, tableName)
 
         obj = ThriftSerializer.serialize(data)
-        creationdate = float(data.creationdate)
-        creationdate = datetime.datetime.fromtimestamp(creationdate)
+        if data.creationdate:
+            creationdate = float(data.creationdate)
+            creationdate = datetime.datetime.fromtimestamp(creationdate)
+        else:
+            creationdate = None
 
         insert = table.insert().values(guid=data.guid, creationdate=creationdate, data=obj)
 
