@@ -35,7 +35,7 @@
 
 
 from pylabs import q
-from OsisConnection import OsisConnection
+from OsisConnectionFactory import OsisConnectionFactory
 
 
 class OsisDB(object):
@@ -119,21 +119,25 @@ class OsisDB(object):
         if name in self._connections:
             return self._connections[name]
 
-        osisConn = OsisConnection()
         iniFile = q.system.fs.joinPaths(q.dirs.cfgDir, 'osisdb.cfg')
         if not q.system.fs.exists(iniFile):
-            q.logger.log("config file not found",3)
+            q.logger.log("config file not found", 3)
             q.eventhandler.raiseCriticalError('Configuration file not found. Please configure the connection.')
         else:
             ini = q.tools.inifile.open(iniFile)
 
         poolsize = 10
-        ip = ini.getValue(name,'ip')
-        database = ini.getValue(name,'database')
-        login = ini.getValue(name,'login')
-        passwd = ini.getValue(name,'passwd')
+        ip = ini.getValue(name, 'ip')
+        database = ini.getValue(name, 'database')
+        login = ini.getValue(name, 'login')
+        passwd = ini.getValue(name, 'passwd')
         if ini.checkParam(name, 'poolsize'):
             poolsize = ini.getIntValue(name, 'poolsize')
+        dbtype = "postgresql"
+        if ini.checkParam(name, 'type'):
+            dbtype = ini.getValue(name, 'type')
+
+        osisConn = OsisConnectionFactory.create(dbtype)
         osisConn.connect(ip, database, login, passwd, poolsize)
 
         # cache the connection for later on

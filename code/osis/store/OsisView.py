@@ -36,62 +36,53 @@
 from pylabs import q
 from pylabs.baseclasses.BaseEnumeration import EnumerationWithValue
 
-#added by racktivity
-import OsisConnection
+import sqlalchemy
 
 class OsisView(object):
-    def __init__(self, domain, objType, name):
+    def __init__(self, domain, objType, name, scheme):
         self.domain = domain
-        self.name = name;
-        self.objType = objType;
+        self.name = name
+        self.objType = objType
+        self.schema = scheme
         self.columns = {}
         self.setCol('viewguid', q.enumerators.OsisType.UUID, False)
-        self.setCol('guid', q.enumerators.OsisType.UUID, False)
-        #overwritten by racktivity
-        #self.schema = '%s_%s' % (self.domain, self.objType)
-        self.schema = OsisConnection.getSchemeName(self.domain, self.objType)
+        self.setCol('guid', q.enumerators.OsisType.UUID, False, index=True)
 
-    def setCol(self, name, datatype, nullable):
+    def setCol(self, name, datatype, nullable, index=False, unique=False):
         if not self.columns.has_key(name):
-            self.columns[name] = OsisColumn(name, datatype, nullable);
+            self.columns[name] = OsisColumn(name, datatype, nullable, index, unique)
 
+    def buildTable(self, metadata):
+        table = sqlalchemy.Table(self.name, metadata, schema=self.schema)
 
-    def buildSql(self):
-        
-        
-        fields = []
         for col in self.columns.itervalues():
-            fields.append(col.sqlString())
-        fieldlist = '\n'.join(fields)[1:]
-        sql = list()
-        sql.append("CREATE TABLE %s.%s (%s)  WITH (OIDS=FALSE) ;"%(self.schema, self.name, fieldlist))
-        sql.append("CREATE INDEX guid_%(objType)s_%(name)s ON %(schema)s.%(name)s (guid)"%{'objType':self.objType, 'name':self.name, 'schema': self.schema})
-        return sql
+            table.append_column(sqlalchemy.Column(col.name, col.datatype.value, nullable=col.nullable))
+
+            if col.index:
+                #add index
+                sqlalchemy.Index("%s_%s" % (self.name, col.name), getattr(table.c, col.name), unique=col.unique)
+
+        return table
 
 
 class OsisColumn(object):
-    def __init__(self, name, datatype, nullable):
+    def __init__(self, name, datatype, nullable, index=False, unique=False):
         self.name = name
         self.datatype = datatype
         self.nullable = nullable
-
-    def sqlString(self):
-        if not self.nullable:
-            return ",\"%s\"  %s NOT NULL"%(self.name, self.datatype.value)
-        else:
-            return ",\"%s\"  %s"%(self.name, self.datatype.value)
-
+        self.index = index
+        self.unique = unique
 
 class OsisType(EnumerationWithValue):
     pass
 
-OsisType.registerItem("integer", "integer")
-OsisType.registerItem("bigint", "bigint")
-OsisType.registerItem("float", "float")
-OsisType.registerItem("string", "character varying(1024)")
-OsisType.registerItem("text", "text")
-OsisType.registerItem("uuid", "uuid")
-OsisType.registerItem("datetime", "timestamp without time zone")
-OsisType.registerItem("boolean", "boolean")
-OsisType.registerItem("binary", "bytea[]")
-OsisType.finishItemRegistration()
+OsisType.registerItem("integer", sqlalchemy.Integer()) #pylint: disable=E1101
+OsisType.registerItem("bigint", sqlalchemy.BigInteger()) #pylint: disable=E1101
+OsisType.registerItem("float", sqlalchemy.Float()) #pylint: disable=E1101
+OsisType.registerItem("string", sqlalchemy.String(1024)) #pylint: disable=E1101
+OsisType.registerItem("text", sqlalchemy.Text()) #pylint: disable=E1101
+OsisType.registerItem("uuid", sqlalchemy.String(46)) #pylint: disable=E1101
+OsisType.registerItem("datetime", sqlalchemy.DateTime()) #pylint: disable=E1101
+OsisType.registerItem("boolean", sqlalchemy.Boolean()) #pylint: disable=E1101
+OsisType.registerItem("binary", sqlalchemy.LargeBinary()) #pylint: disable=E1101
+OsisType.finishItemRegistration() #pylint: disable=E1101
