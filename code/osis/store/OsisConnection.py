@@ -144,7 +144,7 @@ class OsisConnection(object):
         tableName = objTypeName + "_obj"
 
         if self.findTable(domain, tableName) is None:
-            table = sqlalchemy.Table(tableName, self._sqlalchemy_metadata,
+            table = sqlalchemy.Table(self._getTableName(domain, tableName), self._sqlalchemy_metadata,
                 sqlalchemy.Column("guid", sqlalchemy.String(46), primary_key=True, nullable=False),
                 sqlalchemy.Column("creationdate", sqlalchemy.DateTime()),
                 sqlalchemy.Column("data", sqlalchemy.LargeBinary),
@@ -161,7 +161,7 @@ class OsisConnection(object):
         @param domain : name of the domain
         @param objType : name of the object type
         """
-        raise Exception("unimplemented generic connect")
+        raise NotImplementedError("unimplemented generic connect")
 
     def _getSchemeName(self, domain, objType): #pylint: disable=W0613
         """
@@ -170,7 +170,7 @@ class OsisConnection(object):
         @param domain : name of the domain
         @param objType : name of the object type
         """
-        raise Exception("unimplemented generic connect")
+        raise NotImplementedError("unimplemented generic connect")
 
     def schemeCreate(self, domain, name): #pylint: disable=W0613
         """
@@ -179,7 +179,7 @@ class OsisConnection(object):
         @param domain : domain to create the scheme in
         @param objTypeName : the name of the type to create
         """
-        raise Exception("unimplemented generic connect")
+        raise NotImplementedError("unimplemented generic connect")
 
     def schemeExists(self, domain, name): #pylint: disable=W0613
         """
@@ -188,7 +188,7 @@ class OsisConnection(object):
         @param domain : domain to check for the schema
         @param name : name of the schema to check
         """
-        raise Exception("unimplemented generic connect")
+        raise NotImplementedError("unimplemented generic connect")
 
     def viewExists(self, domain, objType, viewname):
         """
@@ -209,7 +209,8 @@ class OsisConnection(object):
 
     def findTable(self, domain, name):
         schema = self._getSchemeName(domain, name)
-        full_name = "%s.%s" % (schema, self._getTableName(domain, name))
+        table = self._getTableName(domain, name)
+        full_name = "%s.%s" % (schema, table)
 
 
         if full_name in self._sqlalchemy_metadata.tables:
@@ -220,12 +221,12 @@ class OsisConnection(object):
         else:
             self._lock_metadata.acquire(True)
             try:
-                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=(table, ))
             except sqlalchemy.exc.DBAPIError, e:
                 if not e.connection_invalidated:
                     raise
                 self._sqlalchemy_engine.dispose()
-                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=(name, ))
+                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=(table, ))
             except sqlalchemy.exc.InvalidRequestError:
                 return None
             finally:
