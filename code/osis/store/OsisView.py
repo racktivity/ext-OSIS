@@ -49,8 +49,7 @@ class OsisView(object):
         self.setCol('guid', q.enumerators.OsisType.UUID, False, index=True)
 
     def setCol(self, name, datatype, nullable, index=False, unique=False):
-        if not self.columns.has_key(name):
-            self.columns[name] = OsisColumn(name, datatype, nullable, index, unique)
+        self.columns[name] = OsisColumn(name, datatype, nullable, index, unique)
 
     def buildTable(self, metadata):
         table = sqlalchemy.Table(self.name, metadata, schema=self.schema)
