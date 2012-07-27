@@ -207,32 +207,43 @@ class OsisConnection(object):
         else:
             return False
 
-    def findTable(self, domain, name):
-        schema = self._getSchemeName(domain, name)
-        table = self._getTableName(domain, name)
-        full_name = "%s.%s" % (schema, table)
-
-
-        if full_name in self._sqlalchemy_metadata.tables:
-            self._lock_metadata.acquire(True) # make sure there are no writes busy
-            self._lock_metadata.release()
-            return self._sqlalchemy_metadata.tables[full_name]
-
+    def findTable(self, domain, name = None):
+        """
+        @param name: if None, all tables in the domain will be reflected and nothing returned
+                    if string, a table object will be returned
+                    if list, a list of table objects will be returned
+        """
+        tableList = []
+        if isinstance(name, basestring):
+            tableList.append(name)
         else:
-            self._lock_metadata.acquire(True)
-            try:
-                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=(table, ))
-            except sqlalchemy.exc.DBAPIError, e:
-                if not e.connection_invalidated:
-                    raise
-                self._sqlalchemy_engine.dispose()
-                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=(table, ))
-            except sqlalchemy.exc.InvalidRequestError:
-                return None
-            finally:
-                self._lock_metadata.release()
-
-            return self._sqlalchemy_metadata.tables[full_name]
+            tableList = name
+        if isinstance(tableList, list):
+            tableList = [self._getTableName(domain, tableName) for tableName in tableList]
+        schema = self._getSchemeName(domain, name)
+        
+        self._lock_metadata.acquire(True)
+        try:
+            self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=tableList)
+        except sqlalchemy.exc.DBAPIError, e:
+            if not e.connection_invalidated:
+                raise
+            self._sqlalchemy_engine.dispose()
+            self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=tableList)
+        except sqlalchemy.exc.InvalidRequestError: #Gabriel sees no reason for this
+            return None
+        finally:
+            self._lock_metadata.release()
+            
+        if tableList is None:
+            return
+        info = []
+        for tableName in tableList:
+            fullName = "%s.%s" % (schema, tableName)
+            info.append(self._sqlalchemy_metadata.tables[fullName])
+        if isinstance(name, basestring):
+            return info[0]
+        return info
 
     def objectsFind(self, domain, objType, filterobject, viewToReturn=None):
         """
