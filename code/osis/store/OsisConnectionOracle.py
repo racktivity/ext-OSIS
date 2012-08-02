@@ -1,8 +1,8 @@
 from OsisConnection import OsisConnection
 
 class OsisConnectionOracle(OsisConnection):
-    def __init__(self, dbtype):
-        super(OsisConnectionOracle, self).__init__(dbtype)
+    def __init__(self, dbtype, sequences = None):
+        super(OsisConnectionOracle, self).__init__(dbtype, sequences)
 
     def _getTableName(self, domain, objType):
         """

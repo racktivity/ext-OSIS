@@ -2,8 +2,8 @@ from pylabs import q
 from OsisConnection import OsisConnection
 
 class OsisConnectionPostgresql(OsisConnection):
-    def __init__(self, dbtype):
-        super(OsisConnectionPostgresql, self).__init__(dbtype)
+    def __init__(self, dbtype, sequences = None):
+        super(OsisConnectionPostgresql, self).__init__(dbtype, sequences)
 
     def _getTableName(self, domain, objType):
         """

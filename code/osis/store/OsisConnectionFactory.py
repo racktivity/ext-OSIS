@@ -7,7 +7,7 @@ class OsisConnectionFactory(object):
         raise NotImplementedError()
 
     @staticmethod
-    def create(dbtype='postgresql'):
+    def create(dbtype='postgresql', sequences = None):
         className = None
         if dbtype == "postgresql":
             className = OsisConnectionPostgresql
@@ -16,4 +16,4 @@ class OsisConnectionFactory(object):
         else:
             q.eventhandler.raiseCriticalError("Failed to load OsisConnection for database type %s" % dbtype)
             return None
-        return className(dbtype)
+        return className(dbtype, sequences)

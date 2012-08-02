@@ -48,29 +48,33 @@ class OsisView(object):
         self.setCol('viewguid', q.enumerators.OsisType.UUID, False)
         self.setCol('guid', q.enumerators.OsisType.UUID, False, index=True)
 
-    def setCol(self, name, datatype, nullable, index=False, unique=False):
-        self.columns[name] = OsisColumn(name, datatype, nullable, index, unique)
+    def setCol(self, name, datatype, nullable, index=False, unique=False, primary_key = False):
+        self.columns[name] = OsisColumn(name, datatype, nullable, index, unique, primary_key)
 
     def buildTable(self, metadata):
         table = sqlalchemy.Table(self.name, metadata, schema=self.schema)
 
-        for col in self.columns.itervalues():
-            table.append_column(sqlalchemy.Column(col.name, col.datatype.value, nullable=col.nullable))
+        for idx, col in enumerate(self.columns.itervalues()):
+            table.append_column(sqlalchemy.Column(col.name, col.datatype.value, nullable=col.nullable, primary_key = col.primary_key))
 
             if col.index:
                 #add index
-                sqlalchemy.Index("%s_%s" % (self.name, col.name), getattr(table.c, col.name), unique=col.unique)
+                indexName = "%s_%s" % (self.name, col.name)
+                if len(indexName) > 30:
+                    indexName = '%s_%s' % (indexName[:27], idx)
+                sqlalchemy.Index(indexName, getattr(table.c, col.name), unique=col.unique)
 
         return table
 
 
 class OsisColumn(object):
-    def __init__(self, name, datatype, nullable, index=False, unique=False):
+    def __init__(self, name, datatype, nullable, index=False, unique=False, primary_key = False):
         self.name = name
         self.datatype = datatype
         self.nullable = nullable
         self.index = index
         self.unique = unique
+        self.primary_key = primary_key
 
 class OsisType(EnumerationWithValue):
     pass

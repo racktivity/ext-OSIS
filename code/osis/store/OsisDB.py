@@ -36,7 +36,7 @@
 
 from pylabs import q
 from OsisConnectionFactory import OsisConnectionFactory
-
+import json
 
 class OsisDB(object):
 
@@ -125,7 +125,8 @@ class OsisDB(object):
             q.eventhandler.raiseCriticalError('Configuration file not found. Please configure the connection.')
         else:
             ini = q.tools.inifile.open(iniFile)
-
+        
+        #we configure the connection
         poolsize = 10
         ip = ini.getValue(name, 'ip')
         database = ini.getValue(name, 'database')
@@ -137,7 +138,13 @@ class OsisDB(object):
         if ini.checkParam(name, 'type'):
             dbtype = ini.getValue(name, 'type')
 
-        osisConn = OsisConnectionFactory.create(dbtype)
+        #for oracle db we need to also read the sequences
+        sequences = {}
+        if 'sequences' in ini.getSections():
+            sequences = ini.getSectionAsDict('sequences')
+            sequences = json.loads(sequences['sequences'])
+
+        osisConn = OsisConnectionFactory.create(dbtype, sequences)
         osisConn.connect(ip, database, login, passwd, poolsize)
 
         # cache the connection for later on

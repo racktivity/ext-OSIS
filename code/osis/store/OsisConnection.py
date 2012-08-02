@@ -48,6 +48,8 @@ import itertools
 import datetime
 import sqlalchemy
 
+#pylint: disable=E1103
+
 class OsisException(exceptions.Exception):
     def __init__(self, command, msg):
         super(OsisException, self).__init__()
@@ -57,22 +59,40 @@ class OsisException(exceptions.Exception):
         self.args = (msg,)
 
     def handleException(self, command, msg): #pylint: disable=W0613
-        errorMsg = 'Exception occurred while executing \"%s\".\n'%command
+        errorMsg = 'Exception occurred while executing \"%s\".\n' % command
         errorMsg += traceback.format_exc()
         return errorMsg
 
 _SA_CACHE = dict()
 
 class OsisConnection(object):
-    def __init__(self, dbtype):
+    def __init__(self, dbtype, sequences = None):
         self._dbConn = None
         self._login = None
         self._lock = threading.Lock()
         self._lock_metadata = threading.Lock()
         self._dbtype = dbtype
-
         self._sqlalchemy_engine = None
         self._sqlalchemy_metadata = None
+        self._sequences = {}
+        if dbtype == 'oracle' and sequences:
+            self._sequences = self.processSequences(sequences)
+
+    def processSequences(self, sequences):
+        """
+        returns a mapping between table names and sequences, as for oracle we always have to put sequences to tables on reflection
+        """
+        info = {}
+        for domain, table in sequences.iteritems():
+            for tblName in table:
+                tableName = self._getTableName(domain, tblName)
+                schemaName = self._getSchemeName(domain, tblName)
+                fullTblName = '%s.%s' % (schemaName, tableName)
+                info[fullTblName] = table[tblName]
+        return info
+        
+    def getEngine(self):
+        return self._sqlalchemy_engine
 
     def connect(self, ip, db, login, passwd, poolsize=10):
         """
@@ -172,6 +192,15 @@ class OsisConnection(object):
         """
         raise NotImplementedError("unimplemented generic connect")
 
+    def getTableName(self, domain, objType): #pylint: disable=W0613)
+        """
+        just for exposing getTableName
+        """
+        return self._getTableName(domain, objType)
+
+    def getSchemeName(self, domain, objType): #pylint: disable=W0613
+        return self._getSchemeName(domain, objType)
+
     def schemeCreate(self, domain, name): #pylint: disable=W0613
         """
         Creates the model structure on the database
@@ -209,7 +238,7 @@ class OsisConnection(object):
 
     def findTable(self, domain, name = None):
         """
-        @param name: if None, all tables in the domain will be reflected and nothing returned
+        @param name: if None, all tables in the domain will be reflected and return a list with them
                     if string, a table object will be returned
                     if list, a list of table objects will be returned
         """
@@ -235,19 +264,27 @@ class OsisConnection(object):
         finally:
             self._lock_metadata.release()
             
-        if tableList is None:
-            return
+        if name is None: #this means we reflected everything inside the domain
+            tableList = self._sqlalchemy_metadata.tables.keys()
+            
         info = []
         for tableName in tableList:
             fullName = "%s.%s" % (schema, tableName)
-            info.append(self._sqlalchemy_metadata.tables[fullName])
+            tblObj = self._sqlalchemy_metadata.tables[fullName]
+            info.append(tblObj)
+            if self._dbtype == 'oracle': #for oracle we also have to add sequences
+                for colName, seqName in self._sequences[fullName].iteritems():
+                    colObj = getattr(tblObj.c, colName)
+                    if not colObj.default:
+                        colObj.default = sqlalchemy.Sequence(seqName)
+        #return tables
         if isinstance(name, basestring):
             return info[0]
         return info
 
     def objectsFind(self, domain, objType, filterobject, viewToReturn=None):
         """
-        returns a list of matching guids according to the supplied fitlerobject filters
+        returns a list of matching guids according to the supplied filterobject filters
 
         @param domain : domain where the objects live
         @param objType : type of object to search
