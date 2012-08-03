@@ -144,9 +144,11 @@ class OsisDB(object):
             sequences = ini.getSectionAsDict('sequences')
             sequences = json.loads(sequences['sequences'])
 
-        osisConn = OsisConnectionFactory.create(dbtype, sequences)
+        osisConn = OsisConnectionFactory.create(dbtype)
         osisConn.connect(ip, database, login, passwd, poolsize)
-
+        if dbtype == 'oracle' and sequences:
+            osisConn.processSequences(sequences)
+            
         # cache the connection for later on
         self._connections[name] = osisConn
 
