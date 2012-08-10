@@ -88,7 +88,7 @@ class OsisConnection(object):
                 fullTblName = '%s.%s' % (schemaName, tableName)
                 info[fullTblName] = table[tblName]
         self._sequences = info
-        
+
     def getEngine(self):
         return self._sqlalchemy_engine
 
@@ -233,7 +233,7 @@ class OsisConnection(object):
             return True
         else:
             return False
-        
+
     def findTable(self, domain, name = None):
         """
         @param name: if None, all tables in the domain will be reflected and return a list with them
@@ -249,7 +249,7 @@ class OsisConnection(object):
             tableList.append(name)
         else:
             tableList = name
-        
+
         #we ask if the tables already exist
         self._lock_metadata.acquire(True) #I don't know if this is necessary, maybe it is legacy code from pylabs
         if isinstance(tableList, list): #it will be a list unless name is None
@@ -261,15 +261,15 @@ class OsisConnection(object):
                     foundTables.append(tblObj)
                 else:
                     notFound = True
-                    
+
         #we already return, if everything was found
         if not notFound and tableList:
             self._lock_metadata.release()
             if isinstance(name, basestring):
                 return foundTables[0]
             return foundTables
-        
-        #we reflect         
+
+        #we reflect
         if notFound or not tableList:
             try:
                 self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=tableList)
@@ -278,19 +278,19 @@ class OsisConnection(object):
                     raise
                 self._sqlalchemy_engine.dispose()
                 self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=tableList)
-            except sqlalchemy.exc.InvalidRequestError: #if the requested table doesn't exist we will return None, is this ok???
+            except sqlalchemy.exc.InvalidRequestError: #if the requested table doesn't exist we will return None
                 return None
             finally:
                 self._lock_metadata.release()
         else:
             self._lock_metadata.release()
-        
+
         #we calculate what to return
         if tableList is None: #this means we reflected everything inside the domain
             tableList = self._sqlalchemy_metadata.tables.keys()
         else:
             tableList = ["%s.%s" % (schema, tableName) for tableName in tableList]
-            
+
         info = []
         for tableName in tableList:
             tblObj = self._sqlalchemy_metadata.tables[tableName]
