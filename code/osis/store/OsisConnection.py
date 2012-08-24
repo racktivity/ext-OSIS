@@ -248,29 +248,41 @@ class OsisConnection(object):
         else:
             tableList = name
 
-        if isinstance(tableList, list): #it will be a list unless name is None
+        # check first which tables are already cached
+        #
+        # we can not use sqlalchemy's caching that is done in reflect() itself as it first gets all available tables
+        # from the database which in terms slows it down if we don't need to reflect anything
+        #
+        toReflect = []
+        if tableList:
             for idx, tableName in enumerate(tableList):
-                tableList[idx]  = self._getTableName(domain, tableName)
+                tableName = self._getTableName(domain, tableName)
+                fullTableName = "%s.%s" % (schema, tableName)
+                tableList[idx] = fullTableName
 
-        #we reflect, because reflect in sqlalchemy already caches the tables we don't need to do it ourselves
-        self._lock_metadata.acquire(True) # make sure there are no writes busy (copy of legacy pylabs code)
-        try:
-            self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=tableList)
-        except sqlalchemy.exc.DBAPIError, e:
-            if not e.connection_invalidated:
-                raise
-            self._sqlalchemy_engine.dispose()
-            self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=tableList)
-        except sqlalchemy.exc.InvalidRequestError: #if the requested table doesn't exist we will return None
-            return None
-        finally:
-            self._lock_metadata.release()
+                self._lock_metadata.acquire(True) # make sure there are no writes busy (copy of legacy pylabs code)
+                if fullTableName not in self._sqlalchemy_metadata.tables:
+                    toReflect.append(tableName) #we still need to reflect it
+                self._lock_metadata.release()
+
+        if toReflect:
+            #we reflect now what's left over
+            self._lock_metadata.acquire(True) # make sure there are no writes busy (copy of legacy pylabs code)
+            try:
+                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=toReflect)
+            except sqlalchemy.exc.DBAPIError, e:
+                if not e.connection_invalidated:
+                    raise
+                self._sqlalchemy_engine.dispose()
+                self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=toReflect)
+            except sqlalchemy.exc.InvalidRequestError: #if the requested table doesn't exist we will return None
+                return None
+            finally:
+                self._lock_metadata.release()
 
         #we calculate what to return
         if tableList is None: #this means we reflected everything inside the domain
             tableList = self._sqlalchemy_metadata.tables.keys()
-        else:
-            tableList = ["%s.%s" % (schema, tableName) for tableName in tableList]
 
         info = []
         for tableName in tableList:
