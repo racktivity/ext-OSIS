@@ -383,7 +383,9 @@ class OsisConnection(object):
         try:
             result = self._sqlalchemy_engine.execute(*args, **kwargs)
         except sqlalchemy.exc.DBAPIError, e:
-            if not e.connection_invalidated:
+            # DIRTY HACK for the class name thing because there is a known issue for older versions of sqlalchemy with
+            # rolling back transactions and throwing "connection is already closed" exceptions
+            if not e.connection_invalidated and not "OsisConnectionPostgresql" in self.__class__.__name__:
                 raise
             self._sqlalchemy_engine.dispose()
             result = self._sqlalchemy_engine.execute(*args, **kwargs)
