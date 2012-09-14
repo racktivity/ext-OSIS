@@ -128,16 +128,26 @@ class OsisDB(object):
         
         #we configure the connection
         poolsize = 10
+        dbtype = "postgresql"
+        if ini.checkParam(name, 'type'):
+            dbtype = ini.getValue(name, 'type')
         ip = ini.getValue(name, 'ip')
+        if ini.checkParam(name, 'port'):
+            port = ini.getValue(name, 'port')
+        else:
+            if dbtype == "postgresql":
+                port = 5432
+            elif dbtype == "oracle":
+                port = 1521
+            else:
+                raise RuntimeError('We only support postgresql and oracle databases')
+            
         database = ini.getValue(name, 'database')
         login = ini.getValue(name, 'login')
         passwd = ini.getValue(name, 'passwd')
         if ini.checkParam(name, 'poolsize'):
             poolsize = ini.getIntValue(name, 'poolsize')
-        dbtype = "postgresql"
-        if ini.checkParam(name, 'type'):
-            dbtype = ini.getValue(name, 'type')
-
+                
         #for oracle db we need to also read the sequences
         sequences = {}
         if 'sequences' in ini.getSections():
@@ -145,7 +155,7 @@ class OsisDB(object):
             sequences = json.loads(sequences['sequences'])
 
         osisConn = OsisConnectionFactory.create(dbtype)
-        osisConn.connect(ip, database, login, passwd, poolsize)
+        osisConn.connect(ip, port, database, login, passwd, poolsize)
         if dbtype == 'oracle' and sequences:
             osisConn.processSequences(sequences)
             

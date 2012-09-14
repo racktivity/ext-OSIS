@@ -92,7 +92,7 @@ class OsisConnection(object):
     def getEngine(self):
         return self._sqlalchemy_engine
 
-    def connect(self, ip, db, login, passwd, poolsize=10):
+    def connect(self, ip, port, db, login, passwd, poolsize=10):
         """
         Connect to the sql server
 
@@ -103,12 +103,13 @@ class OsisConnection(object):
         @param poolsize : the size of the internal connection pool
         """
         self._login = login
-        dsn = '%(dbtype)s://%(user)s:%(password)s@%(host)s/%(db)s' % {
-            'host': ip,
-            'user': login,
-            'password': passwd,
-            'db': db,
-            'dbtype': self._dbtype
+        dsn = '%(dbtype)s://%(user)s:%(password)s@%(host)s:%(port)s/%(db)s' % {
+            'host'     : ip,
+            'port'     : port,
+            'user'     : login,
+            'password' : passwd,
+            'db'       : db,
+            'dbtype'   : self._dbtype
         }
 
         if dsn not in _SA_CACHE:
