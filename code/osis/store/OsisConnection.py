@@ -113,9 +113,12 @@ class OsisConnection(object):
         }
 
         if dsn not in _SA_CACHE:
+            engine = sqlalchemy.create_engine(dsn, pool_size=poolsize)
+            metadata = sqlalchemy.MetaData()
+            metadata.bind = engine
             _SA_CACHE[dsn] = {
-                "engine": sqlalchemy.create_engine(dsn, pool_size=poolsize),
-                "metadata": sqlalchemy.MetaData()
+                "engine": engine,
+                "metadata": metadata
             }
 
         alchemyInfo = _SA_CACHE[dsn]
