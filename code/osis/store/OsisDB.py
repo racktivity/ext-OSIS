@@ -72,10 +72,13 @@ class OsisDB(object):
         if not ini.checkSection(name):
             ini.addSection(name)
 
-        ini.addParam(name,'ip',ip)
-        ini.addParam(name,'database',database)
-        ini.addParam(name,'login', login)
-        ini.addParam(name,'passwd', passwd)
+        ini.addParam(name, 'ip', ip)
+        ini.addParam(name, 'database', database)
+        ini.addParam(name, 'login', login)
+        ini.addParam(name, 'passwd', passwd)
+        ini.addParam(name, 'poolsize', '1')
+        ini.addParam(name, 'poolsize-applicationserver', '10')
+        ini.addParam(name, 'poolsize-workflowengine', '5')
 
         ini.write()
 
@@ -125,9 +128,9 @@ class OsisDB(object):
             q.eventhandler.raiseCriticalError('Configuration file not found. Please configure the connection.')
         else:
             ini = q.tools.inifile.open(iniFile)
-        
+
         #we configure the connection
-        poolsize = 10
+        poolsize = 1
         dbtype = "postgresql"
         if ini.checkParam(name, 'type'):
             dbtype = ini.getValue(name, 'type')
@@ -141,13 +144,16 @@ class OsisDB(object):
                 port = 1521
             else:
                 raise RuntimeError('We only support postgresql and oracle databases')
-            
+
         database = ini.getValue(name, 'database')
         login = ini.getValue(name, 'login')
         passwd = ini.getValue(name, 'passwd')
-        if ini.checkParam(name, 'poolsize'):
+
+        if ini.checkParam(name, 'poolsize-' + q.application.appname):
+            poolsize = ini.getIntValue(name, 'poolsize-' + q.application.appname)
+        elif ini.checkParam(name, 'poolsize'):
             poolsize = ini.getIntValue(name, 'poolsize')
-                
+
         #for oracle db we need to also read the sequences
         sequences = {}
         if 'sequences' in ini.getSections():
@@ -158,7 +164,7 @@ class OsisDB(object):
         osisConn.connect(ip, port, database, login, passwd, poolsize)
         if dbtype == 'oracle' and sequences:
             osisConn.processSequences(sequences)
-            
+
         # cache the connection for later on
         self._connections[name] = osisConn
 
