@@ -66,6 +66,17 @@ class OsisException(exceptions.Exception):
 _SA_CACHE = dict()
 
 class OsisConnection(object):
+
+    class NoneUnicodeString(sqlalchemy.types.TypeDecorator):  #pylint: disable=W0223
+        """
+        Custom type to make force unicodes to ascii strings.
+        """
+
+        impl = sqlalchemy.types.String
+
+        def process_bind_param(self, value, dialect):
+            return str(value)
+
     def __init__(self, dbtype):
         self._dbConn = None
         self._login = None
@@ -270,15 +281,32 @@ class OsisConnection(object):
                 self._lock_metadata.release()
 
         if toReflect:
+
+            def updateGuidColumns():
+                """
+                Set all columns with "guid" in their name to our custom NoneUnicodeString type so they are forsced to asccii.
+                This is needed for oracle otherwise there is a big performance impact.
+                """
+
+                # We can't just loop over toReflect as it might end up reflecting more then just the needed tables.
+                # For instance if you reflect aggs.voltage it reflects aggs.structure too and we need to adjust those columns as well.
+                for tblObj in self._sqlalchemy_metadata.tables.itervalues():
+                    for col in tblObj.columns:
+                        if "guid" in col.name.lower() and isinstance(col.type, sqlalchemy.types.String):
+                            col.type = OsisConnection.NoneUnicodeString()
+
+
             #we reflect now what's left over
             self._lock_metadata.acquire(True) # make sure there are no writes busy (copy of legacy pylabs code)
             try:
                 self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=toReflect)
+                updateGuidColumns()
             except sqlalchemy.exc.DBAPIError, e:
                 if not e.connection_invalidated:
                     raise
                 self._sqlalchemy_engine.dispose()
                 self._sqlalchemy_metadata.reflect(bind=self._sqlalchemy_engine, schema=schema, only=toReflect)
+                updateGuidColumns()
             except sqlalchemy.exc.InvalidRequestError: #if the requested table doesn't exist we will return None
                 return None
             finally:
