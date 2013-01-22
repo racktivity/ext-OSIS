@@ -65,17 +65,20 @@ class OsisException(exceptions.Exception):
 
 _SA_CACHE = dict()
 
+
 class OsisConnection(object):
 
     class NoneUnicodeString(sqlalchemy.types.TypeDecorator):  #pylint: disable=W0223
         """
-        Custom type to make force unicodes to ascii strings.
+        Custom type to force unicode strings to ascii strings.
         """
 
         impl = sqlalchemy.types.String
 
         def process_bind_param(self, value, dialect):
-            return str(value)
+            if isinstance(value, unicode):
+                return str(value)
+            return value
 
     def __init__(self, dbtype):
         self._dbConn = None
@@ -384,7 +387,7 @@ class OsisConnection(object):
             col = table.c[field]
 
             if isinstance(col.type,
-                (sqlalchemy.types.VARCHAR, sqlalchemy.types.NVARCHAR,)) and not exact:
+                (sqlalchemy.types.VARCHAR, sqlalchemy.types.NVARCHAR, OsisConnection.NoneUnicodeString)) and not exact:
                 return (col.like('%%%s%%' % value))
             else:
                 return (col == value)
