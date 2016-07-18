@@ -543,14 +543,14 @@ class OsisConnectionGeneric(object):
                 if isinstance(v, BaseEnumeration):
                     field[k] = str(v)
             
-            query = table.insert().values(values=field)
-            
-            result = None
-            try:
-                result = self._sqlAlchemyQuery(query, field)
-            finally:
-                if result:
-                    result.close()
+        query = table.insert().values(fields)
+
+        result = None
+        try:
+            result = self._sqlAlchemyQuery(query, field)
+        finally:
+            if result:
+                result.close()
 
     def _generateSQLString(self, value):
         if value == None:
