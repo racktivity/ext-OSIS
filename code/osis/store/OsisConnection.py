@@ -545,14 +545,15 @@ class OsisConnection(object):
                 if isinstance(v, BaseEnumeration):
                     field[k] = str(v)
 
-        query = table.insert().values(fields)
+        if fields:
+            query = table.insert().values(fields)
 
-        result = None
-        try:
-            result = self.runSqlAlchemyQuery(query, fields)
-        finally:
-            if result:
-                result.close()
+            result = None
+            try:
+                result = self.runSqlAlchemyQuery(query, fields)
+            finally:
+                if result:
+                    result.close()
 
     def _executeQuery(self, query, getdict=True, *args, **kwargs):
         '''
