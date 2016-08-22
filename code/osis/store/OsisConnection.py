@@ -546,7 +546,7 @@ class OsisConnection(object):
                     field[k] = str(v)
 
         if fields:
-            query = table.insert().values(fields)
+            query = table.insert()
 
             result = None
             try:
