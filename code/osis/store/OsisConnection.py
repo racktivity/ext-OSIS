@@ -48,6 +48,40 @@ import itertools
 import datetime
 import sqlalchemy
 
+from contextlib import contextmanager
+from sqlalchemy.orm import Session as BaseSession
+
+
+class Session(BaseSession):
+    def __init__(self, *a, **kw):
+        super(Session, self).__init__(*a, **kw)
+        self._in_atomic = False
+
+    @contextmanager
+    def atomic(self):
+        """Transaction context manager.
+
+        Will commit the transaction on successful completion
+        of the block, or roll it back on error.
+
+        Supports nested usage (via savepoints).
+
+        """
+        nested = self._in_atomic
+        self.begin(nested=nested)
+        self._in_atomic = True
+
+        try:
+            yield
+        except:
+            self.rollback()
+            raise
+        else:
+            self.commit()
+        finally:
+            if not nested:
+                self._in_atomic = False
+
 #pylint: disable=E1103
 
 class OsisException(exceptions.Exception):
@@ -87,6 +121,7 @@ class OsisConnection(object):
         self._lock_metadata = threading.Lock()
         self._dbtype = dbtype
         self._sqlalchemy_engine = None
+        self._sqlalchemy_session = None
         self._sqlalchemy_metadata = None
         self._sequences = {} #this will be set after the connection is made, in OsisDB module
 
@@ -105,6 +140,9 @@ class OsisConnection(object):
 
     def getEngine(self):
         return self._sqlalchemy_engine
+
+    def getSession(self):
+        return self._sqlalchemy_session
 
     def connect(self, ip, port, db, login, passwd, poolsize=10):
         """
@@ -131,12 +169,14 @@ class OsisConnection(object):
             metadata = sqlalchemy.MetaData()
             metadata.bind = engine
             _SA_CACHE[dsn] = {
+                "session": Session(bind=engine, autocommit=True),
                 "engine": engine,
                 "metadata": metadata
             }
 
         alchemyInfo = _SA_CACHE[dsn]
         self._sqlalchemy_engine = alchemyInfo["engine"]
+        self._sqlalchemy_session = alchemyInfo["session"]
         self._sqlalchemy_metadata = alchemyInfo["metadata"]
 
         return dict()
@@ -523,37 +563,41 @@ class OsisConnection(object):
         @param versionguid : unique identifier indicating the version of the object (OBSOLETED)
         @param fields : dict containing the field:values
         """
-        # Remove current entry (if any)
-        self.viewDelete(domain, objType, viewName, guid, versionguid)
+        sess = self.getSession()
+        with sess.atomic():
+            # Remove current entry (if any)
+            table = self.findTable(domain, viewName)
 
-        # Prepare values
-        newViewGuid = q.base.idgenerator.generateGUID() #pylint: disable=E1101
-        if not isinstance(fields, list):
-            fields = [fields,]
+            sess.execute(table.delete().where(table.c.guid == guid))
 
-        # Add new entry
-        table = self.findTable(domain, viewName)
+            # Prepare values
+            newViewGuid = q.base.idgenerator.generateGUID() #pylint: disable=E1101
+            if not isinstance(fields, list):
+                fields = [fields,]
 
-        for field in fields:
-            # Add missing field data
-            field.update({
-                'guid': guid,
-                'viewguid': newViewGuid,
-            })
+            # Add new entry
+            table = self.findTable(domain, viewName)
 
-            for k, v in field.iteritems():
-                if isinstance(v, BaseEnumeration):
-                    field[k] = str(v)
+            for field in fields:
+                # Add missing field data
+                field.update({
+                    'guid': guid,
+                    'viewguid': newViewGuid,
+                })
 
-        if fields:
-            query = table.insert()
+                for k, v in field.iteritems():
+                    if isinstance(v, BaseEnumeration):
+                        field[k] = str(v)
 
-            result = None
-            try:
-                result = self.runSqlAlchemyQuery(query, fields)
-            finally:
-                if result:
-                    result.close()
+            if fields:
+                query = table.insert()
+
+                result = None
+                try:
+                    result = sess.execute(query, fields)
+                finally:
+                    if result:
+                        result.close()
 
     def _executeQuery(self, query, getdict=True, *args, **kwargs):
         '''
